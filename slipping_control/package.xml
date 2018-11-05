@@ -50,7 +50,10 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>geometry_msgs</build_depend>
-  <build_depend>slipping_control_common</build_depend>
+  <depend>slipping_control_common</depend>
+
+  <depend>sun_helper_lib</depend>
+  <depend>sun_learning_lib</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(slipping_control)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+ add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
 roscpp
 geometry_msgs
 slipping_control_common
+sun_helper_lib
+sun_learning_lib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -204,6 +206,15 @@ add_executable(wrench_stamped_2_contact_force_stamped
 )
 add_dependencies(wrench_stamped_2_contact_force_stamped ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(wrench_stamped_2_contact_force_stamped
+  ${catkin_LIBRARIES}
+)
+#########################################
+#########################################
+add_executable(compute_ls
+  src/compute_ls_node.cpp
+)
+add_dependencies(compute_ls ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(compute_ls
   ${catkin_LIBRARIES}
 )
 #########################################

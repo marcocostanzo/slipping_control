@@ -13,6 +13,8 @@ geometry_msgs
 slipping_control_common
 sun_helper_lib
 sun_learning_lib
+sun_systems_lib
+sun_utils
 )
 
 ## System dependencies are found with CMake's conventions
@@ -215,6 +217,15 @@ add_executable(compute_ls
 )
 add_dependencies(compute_ls ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(compute_ls
+  ${catkin_LIBRARIES}
+)
+#########################################
+#########################################
+add_executable(kalman_filter_velocity
+  src/kalman_filter_velocity_node.cpp
+)
+add_dependencies(kalman_filter_velocity ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(kalman_filter_velocity
   ${catkin_LIBRARIES}
 )
 #########################################

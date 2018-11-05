@@ -54,7 +54,8 @@
 
   <depend>sun_helper_lib</depend>
   <depend>sun_learning_lib</depend>
-
+  <depend>sun_systems_lib</depend>
+  <build_depend>sun_utils</build_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

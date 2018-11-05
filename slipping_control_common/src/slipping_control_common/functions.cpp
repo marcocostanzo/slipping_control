@@ -91,3 +91,57 @@ void initANN_COR_R(){
 
     __ann_COR_R__ = new ANN ( path );
 }
+
+Vector<> vel_sys_h_fcn(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
+    Vector<2> ret = makeVector( info.sigma_02*x[1] + info.beta_o2*x[0], info.sigma_03*x[2] + info.beta_o3*x[0]);
+    return ret;
+}
+
+Matrix<> vel_sys_HH_fcn(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
+    Matrix<2,3> ret = Data( info.beta_o2 , info.sigma_02, 0.0, info.beta_o3, 0.0, info.sigma_03 );
+    return ret;
+}
+
+Vector<> vel_sys_f_fcn_cont(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
+    
+    Vector<3> x_dot = Zeros;
+
+    double den = 1.0/( info.Io + info.Mo*pow(info.cor+info.b,2) );
+
+    x_dot[0] = den * ( -(info.beta_o2 + info.beta_o3)*x[0] - info.sigma_02*x[1] - info.sigma_03*x[2] + u[0] );
+
+    x_dot[1] = x[0] - info.sigma_02/info.f_max_0 * fabs(x[0]) * x[1];
+
+    x_dot[2] = x[0] - info.sigma_03/info.f_max_1 * fabs(x[0]) * x[2];
+
+    return x_dot;
+
+}
+
+Matrix<> vel_sys_FF_fcn_cont(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
+    
+    Matrix<3,3> F = Zeros;
+
+    double den = 1.0/( info.Io + info.Mo*pow(info.cor+info.b,2) );
+
+    F(0,0) = -den * ( info.beta_o2 + info.beta_o3 );
+
+    F(0,1) = -info.sigma_02*den;
+
+    F(0,2) = -info.sigma_03*den;
+
+    F(1,0) = 1.0 - info.sigma_02/info.f_max_0 * x[1] * sign( x[0] );
+
+    F(1,1) = -info.sigma_02/info.f_max_0 * fabs( x[0] );
+
+    F(1,2) = 0.0;
+
+    F(2,0) = 1.0 - info.sigma_03/info.f_max_1 * x[2] * sign( x[0] );
+
+    F(2,1) = 0.0;
+
+    F(2,2) = -info.sigma_03/info.f_max_1 * fabs( x[0] );
+
+    return F;
+
+}

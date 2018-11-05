@@ -34,6 +34,19 @@ struct LS_INFO {
   double beta_;
 };
 
+struct VEL_SYSTEM_INFO {
+  double Io;
+  double Mo;
+  double cor;
+  double b;
+  double beta_o2;
+  double beta_o3;
+  double sigma_02;
+  double sigma_03;
+  double f_max_0;
+  double f_max_1;
+};
+
 ANN* __ann_COR_R__;
 
 double computeAlpha( const LS_INFO& ls_info );
@@ -58,5 +71,13 @@ double limitSurface_true( double fnk );
 double diff_limitSurface_true( double fnk );
 
 void initANN_COR_R();
+
+TooN::Vector<> vel_sys_h_fcn(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
+
+TooN::Matrix<> vel_sys_HH_fcn(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
+
+TooN::Vector<> vel_sys_f_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
+
+TooN::Matrix<> vel_sys_FF_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
 
 #endif

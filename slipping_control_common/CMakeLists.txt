@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(slipping_control_common)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -10,6 +10,9 @@ project(slipping_control_common)
 find_package(catkin REQUIRED COMPONENTS
 message_generation
 std_msgs
+robotics_toolbox_ros
+roslib
+sun_learning_lib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -50,6 +53,10 @@ std_msgs
    FILES
    ContactForces.msg
    ContactForcesStamped.msg
+   VirtualCOR.msg
+   VirtualCORStamped.msg
+   MaxForces.msg
+   MaxForcesStamped.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -102,9 +109,9 @@ std_msgs
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES slipping_control_common
-  CATKIN_DEPENDS message_runtime std_msgs
+  INCLUDE_DIRS include
+  LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS message_runtime std_msgs robotics_toolbox_ros roslib sun_learning_lib
 #  DEPENDS system_lib
 )
 
@@ -115,14 +122,14 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-# ${catkin_INCLUDE_DIRS}
+ include
+ ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/slipping_control_common.cpp
-# )
+ add_library(${PROJECT_NAME}
+   src/${PROJECT_NAME}/functions.cpp
+ )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

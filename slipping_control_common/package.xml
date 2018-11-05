@@ -53,7 +53,10 @@
   <build_depend>std_msgs</build_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>message_runtime</exec_depend>
+  <depend>roslib</depend>
 
+  <depend>robotics_toolbox_ros</depend>
+  <depend>sun_learning_lib</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

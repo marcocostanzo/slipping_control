@@ -13,6 +13,7 @@ std_msgs
 robotics_toolbox_ros
 roslib
 sun_learning_lib
+actionlib_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -66,16 +67,16 @@ sun_learning_lib
  )
 
 ## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+ add_action_files(
+   FILES
+   Grasping.action
+ )
 
 ## Generate added messages and services with any dependencies listed here
  generate_messages(
    DEPENDENCIES
-   std_msgs  # Or other packages containing msgs
+   std_msgs 
+   actionlib_msgs
  )
 
 ################################################
@@ -110,7 +111,7 @@ sun_learning_lib
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS message_runtime std_msgs robotics_toolbox_ros roslib sun_learning_lib
+  CATKIN_DEPENDS message_runtime std_msgs robotics_toolbox_ros roslib sun_learning_lib actionlib_msgs
 #  DEPENDS system_lib
 )
 

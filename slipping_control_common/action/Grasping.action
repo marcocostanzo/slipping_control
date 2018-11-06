@@ -1,0 +1,11 @@
+#goal definition
+float64 force
+---
+#result definition
+bool success
+int8 error
+---
+#feedback
+float64 force
+
+

@@ -57,6 +57,7 @@
 
   <depend>robotics_toolbox_ros</depend>
   <depend>sun_learning_lib</depend>
+  <depend>actionlib_msgs</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

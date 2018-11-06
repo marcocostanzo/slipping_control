@@ -229,3 +229,21 @@ target_link_libraries(kalman_filter_velocity
   ${catkin_LIBRARIES}
 )
 #########################################
+#########################################
+add_executable(dynamic_controller
+  src/dynamic_controller_node.cpp
+)
+add_dependencies(dynamic_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(dynamic_controller
+  ${catkin_LIBRARIES}
+)
+#########################################
+#########################################
+add_executable(compute_static
+  src/compute_static_node.cpp
+)
+add_dependencies(compute_static ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(compute_static
+  ${catkin_LIBRARIES}
+)
+#########################################

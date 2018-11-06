@@ -70,6 +70,10 @@ double limitSurface_true( double fnk );
 
 double diff_limitSurface_true( double fnk );
 
+double limitSurface_line( double ft_n );
+
+double diff_limitSurface_line( double ft_n );
+
 void initANN_COR_R();
 
 TooN::Vector<> vel_sys_h_fcn(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);

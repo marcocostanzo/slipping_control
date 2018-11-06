@@ -84,6 +84,15 @@ double diff_limitSurface_true( double fnk ){
     return polyval( __diff_ls_vector__, fnk  );
 }
 
+
+double limitSurface_line( double ft_n ){
+    return ( -ft_n + 1 );
+}
+
+double diff_limitSurface_line( double ft_n ){
+    return -1;
+}
+
 void initANN_COR_R(){
     string path("");
     path = ros::package::getPath("slipping_control_common");

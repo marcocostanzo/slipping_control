@@ -15,6 +15,7 @@ sun_helper_lib
 sun_learning_lib
 sun_systems_lib
 sun_utils
+actionlib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -244,6 +245,15 @@ add_executable(compute_static
 )
 add_dependencies(compute_static ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(compute_static
+  ${catkin_LIBRARIES}
+)
+#########################################
+#########################################
+add_executable(grasping
+  src/grasping_node.cpp
+)
+add_dependencies(compute_static ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(grasping
   ${catkin_LIBRARIES}
 )
 #########################################

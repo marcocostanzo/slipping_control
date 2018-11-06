@@ -41,14 +41,23 @@ ros::Publisher pubMinForce;
 ros::Publisher pubMaxForce;
 ros::Publisher pubGenerForce;
 
+//Params
 LS_INFO ls_info;
+
+//Trigger
 bool taun_trigger_state = true;
 double TAUN_MIN, TAUN_MAX, TAUN_WHEN_TRIGGER_ACTIVE;
-double MAX_SIGMA, MAX_COR_TILDE;
-double DEFAULT_MIN_FN, MIN_FN_MIN;
 
+//Cor_tilde
+double MAX_SIGMA, MAX_COR_TILDE; //max sigma should be a param of function cor_tilde
+
+//FindZero -> Fn_min
 double GD_GAIN, GD_COST_TOL, FIND_ZERO_LAMBDA;
 int MAX_GD_ITER;
+double DEFAULT_MIN_FN;
+
+//Secure vars
+double MIN_FN_MIN;
 
 void contact_force_Callback (const slipping_control_common::ContactForcesStamped::ConstPtr& msg) {
 
@@ -135,23 +144,30 @@ int main(int argc, char *argv[])
     nh_private.param("mu" , ls_info.mu_, 0.8 );
     ls_info.alpha_ = computeAlpha( ls_info );
 
+    //Trigger
     nh_private.param("trigger_taun_min" , TAUN_MIN, 0.002 );
     nh_private.param("trigger_taun_max" , TAUN_MAX, 0.010 );
     nh_private.param("trigger_taun_when_trigger_active" , TAUN_WHEN_TRIGGER_ACTIVE, TAUN_MIN );
 
+    //Cor_tilde
     nh_private.param("max_sigma" , MAX_SIGMA, 1.0 );
     nh_private.param("max_cor_tilde" , MAX_COR_TILDE, 1.0 );
 
+    //FindZero -> Fn_min
     nh_private.param("default_fn_min" , DEFAULT_MIN_FN, 20.0 );
-    nh_private.param("min_fn_min" , MIN_FN_MIN, 2.0 );
     nh_private.param("newton_gain" , GD_GAIN, 1.0 );
     nh_private.param("newton_cost_tol" , GD_COST_TOL, 1.0E-6 );
     nh_private.param("newton_lambda" , FIND_ZERO_LAMBDA, 1.0E-10 );
     nh_private.param("newton_max_iter" , MAX_GD_ITER, 150 );
 
+    //Secure vars
+    nh_private.param("min_fn_min" , MIN_FN_MIN, 2.0 );
+
+    //Sub
     string contact_force_topic_str("");
     nh_private.param("contact_force_topic" , contact_force_topic_str, string("contact_force") );
 
+    //Pubs
     string cor_topic_str("");
     nh_private.param("cor_topic" , cor_topic_str, string("cor") );
     string min_force_topic_str("");

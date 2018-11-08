@@ -266,3 +266,12 @@ target_link_libraries(pivoting
   ${catkin_LIBRARIES}
 )
 #########################################
+#########################################
+add_executable(smart_control
+  src/smart_control_node.cpp
+)
+add_dependencies(smart_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(smart_control
+  ${catkin_LIBRARIES}
+)
+#########################################

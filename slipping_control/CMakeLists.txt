@@ -252,8 +252,17 @@ target_link_libraries(compute_static
 add_executable(grasping
   src/grasping_node.cpp
 )
-add_dependencies(compute_static ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(grasping ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(grasping
+  ${catkin_LIBRARIES}
+)
+#########################################
+#########################################
+add_executable(pivoting
+  src/pivoting_node.cpp
+)
+add_dependencies(pivoting ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(pivoting
   ${catkin_LIBRARIES}
 )
 #########################################

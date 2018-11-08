@@ -70,6 +70,7 @@ actionlib_msgs
  add_action_files(
    FILES
    Grasping.action
+   Pivoting.action
  )
 
 ## Generate added messages and services with any dependencies listed here

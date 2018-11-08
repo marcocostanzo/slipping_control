@@ -64,6 +64,8 @@ actionlib_msgs
  add_service_files(
    FILES
    FnsParams.srv
+   Grasp.srv
+   Pivoting.srv
  )
 
 ## Generate actions in the 'action' folder

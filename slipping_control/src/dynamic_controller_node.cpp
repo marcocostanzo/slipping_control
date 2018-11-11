@@ -43,7 +43,8 @@ ros::ServiceClient client_pause_kf;
 string in_topic("");
 string out_topic("");
 
-float control_gain = 0.0;
+float i_gain = 0.0;
+float p_gain;
 double input_data;
 double input_saturation;
 bool b_integral_action;
@@ -53,7 +54,7 @@ TF_FIRST_ORDER_FILTER* tf_filter;
 std_msgs::Float32 fnd;
 void readInput_and_pub(const std_msgs::Float32::ConstPtr& msg){
 
-    fnd.data = fabs(msg->data * control_gain);
+    fnd.data = fabs(msg->data * p_gain);
 
 	outPub.publish(fnd);
 }
@@ -126,9 +127,8 @@ int main(int argc, char *argv[]){
     string pause_kf_service("");
     nh->param("pause_kf_service" , pause_kf_service, string("pause") );
 
-    nh->param("controlGain" , control_gain, (float)2000.0 );
-    float p_gain;
-    nh->param("p_gain" , p_gain, (float)0.1 );
+    nh->param("i_gain" , i_gain, (float)20.0 );
+    nh->param("p_gain" , p_gain, (float)20.0 );
 
     nh->param("integral_action" , b_integral_action, false );
     double Hz;
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]){
 	// Publisher
     if(b_integral_action){
 	    in_sub = nh->subscribe(in_topic, 1, readInput);
-        tf_integrator = new TF_INTEGRATOR(1.0/Hz);
+        tf_integrator = new TF_INTEGRATOR(1.0/Hz, i_gain);
         tf_filter = new TF_FIRST_ORDER_FILTER(cut_freq, 1.0/Hz);
         timer_state = timer_max;
         b_use_int = false;
@@ -159,8 +159,6 @@ int main(int argc, char *argv[]){
     ros::ServiceServer servicePause = nh -> advertiseService(pause_service, pause_callbk);
 
     client_pause_kf = nh -> serviceClient<std_srvs::SetBool>(pause_kf_service);
-
-    control_gain = fabs(control_gain);
 
     if(b_integral_action){
 
@@ -194,7 +192,7 @@ int main(int argc, char *argv[]){
             
             //Apply correct filter
             if(b_use_int){
-                fnd.data = fabs( control_gain * tf_integrator->apply(input_data) + p_gain * input_data );
+                fnd.data = fabs( tf_integrator->apply(input_data) + p_gain * input_data );
             } else {
                 fnd.data = fabs( tf_filter->apply(0.0) );
             }

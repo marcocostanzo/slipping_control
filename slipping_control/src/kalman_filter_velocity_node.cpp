@@ -179,7 +179,7 @@ int main(int argc, char *argv[]){
     /******************/
 
     string base_path("");
-    base_path = ros::package::getPath("sipping_control");
+    base_path = ros::package::getPath("slipping_control");
     base_path += "/KF_VELOCITY";
     
     string path = base_path + "/W.txt";

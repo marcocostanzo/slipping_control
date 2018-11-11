@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
     nh_private.param("trigger_taun_when_trigger_active" , TAUN_WHEN_TRIGGER_ACTIVE, TAUN_MIN );
 
     //Cor_tilde
-    nh_private.param("max_sigma" , MAX_SIGMA, 1.0 );
+    nh_private.param("max_sigma" , MAX_SIGMA, 30.0 );
     nh_private.param("max_cor_tilde" , MAX_COR_TILDE, 1.0 );
 
     //FindZero -> Fn_min

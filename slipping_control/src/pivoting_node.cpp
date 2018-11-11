@@ -37,7 +37,6 @@
 
 using namespace std;
 
-string topic_force_command("");
 string topic_wrench("");
 string topic_grasp_force("");
 
@@ -61,7 +60,6 @@ protected:
     // create messages that are used to published feedback/result
     slipping_control_common::PivotingFeedback feedback_;
     slipping_control_common::PivotingResult result_;
-    ros::Publisher force_command_pub;
     ros::Subscriber wrench_sub;
     ros::Subscriber grasp_force_sub;
 
@@ -70,7 +68,6 @@ public:
   PivotingAction(std::string name) :
     as_(nh_, name, boost::bind(&PivotingAction::executeCB, this, _1), false),
     action_name_(name),
-    force_command_pub( nh_.advertise<std_msgs::Float64>( topic_force_command,1) ),
     wrench_sub(nh_.subscribe(topic_wrench, 1,   &PivotingAction::readForces,this ) ),
     grasp_force_sub(nh_.subscribe(topic_grasp_force, 1, &PivotingAction::readGraspForce,this) )
   {
@@ -133,8 +130,7 @@ public:
 			    fp.data =   fp.data - (gain/rate)*(tauz - tau_d);
             }
 
-            //cout << fp.data << endl;
-            force_command_pub.publish(fp);
+            //cout << fp.data << endl;;
 
             // publish the feedback
             feedback_.fn = fp.data;
@@ -235,8 +231,6 @@ int main(int argc, char *argv[]){
 	 
     nh_private.param("topic_grasp_force" , topic_grasp_force, string("wrench") );
     nh_private.param("topic_wrench" , topic_wrench, string("grasp_force") );
-    
-    nh_private.param("topic_force_command" , topic_force_command, string("commandForce") );
 
     string pivoting_action("");
     nh_private.param("pivoting_action" , pivoting_action, string("action_pivoting") );

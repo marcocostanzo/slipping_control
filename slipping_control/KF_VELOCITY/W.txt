@@ -1,0 +1,5 @@
+1.0E-6  0.0     0.0
+0.0     1.0E-8  0.0
+0.0     0.0     1.0E-8
+
+#Remember that these numbers will be multiply by Ts^2

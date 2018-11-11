@@ -159,13 +159,13 @@ int main(int argc, char *argv[]){
     string cor1_tipic_str("");
     nh_private.param( "cor1_topic" , cor1_tipic_str, string("finger1/cor") );
     string max_gen_force0_tipic_str("");
-    nh_private.param( "max_gen_force0" , max_gen_force0_tipic_str, string("finger0/max_gen_force") );
+    nh_private.param( "max_gen_force0_topic" , max_gen_force0_tipic_str, string("finger0/max_gen_force") );
     string max_gen_force1_tipic_str("");
-    nh_private.param( "max_gen_force1" , max_gen_force1_tipic_str, string("finger1/max_gen_force") );
+    nh_private.param( "max_gen_force1_topic" , max_gen_force1_tipic_str, string("finger1/max_gen_force") );
     string gen_force0_tipic_str("");
-    nh_private.param( "gen_force0" , gen_force0_tipic_str, string("finger0/gen_force") );
+    nh_private.param( "gen_force0_topic" , gen_force0_tipic_str, string("finger0/gen_force") );
     string gen_force1_tipic_str("");
-    nh_private.param( "gen_force1" , gen_force1_tipic_str, string("finger1/gen_force") );
+    nh_private.param( "gen_force1_topic" , gen_force1_tipic_str, string("finger1/gen_force") );
 
     string extimated_velocity_topic_str("");
     nh_private.param( "extimated_velocity_topic" , extimated_velocity_topic_str, string("extimated_vel") );

@@ -275,3 +275,12 @@ target_link_libraries(smart_control
   ${catkin_LIBRARIES}
 )
 #########################################
+#########################################
+add_executable(static_combine
+  src/static_combine_node.cpp
+)
+add_dependencies(static_combine ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(static_combine
+  ${catkin_LIBRARIES}
+)
+#########################################

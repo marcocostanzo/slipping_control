@@ -21,7 +21,6 @@
 
 #include "ros/ros.h"
 
-#include "geometry_msgs/WrenchStamped.h"
 #include <std_msgs/Float64.h>
 #include "std_srvs/SetBool.h"
 #include "slipping_control_common/FnsParams.h"

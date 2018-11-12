@@ -21,7 +21,7 @@
 
 #include "ros/ros.h"
 
-#include <std_msgs/Float32.h>
+#include <std_msgs/Float64.h>
 #include "std_srvs/SetBool.h"
 #include "Helper.h"
 
@@ -31,9 +31,6 @@
 #define HEADER_PRINT BOLDYELLOW "[Dynamic Controller]: " CRESET
 
 using namespace std;
-
-
-ros::NodeHandle * nh;
 
 ros::Publisher outPub;
 ros::Subscriber in_sub;
@@ -51,15 +48,15 @@ bool b_integral_action;
 TF_INTEGRATOR* tf_integrator;
 TF_FIRST_ORDER_FILTER* tf_filter;
 
-std_msgs::Float32 fnd;
-void readInput_and_pub(const std_msgs::Float32::ConstPtr& msg){
+std_msgs::Float64 fnd;
+void readInput_and_pub(const std_msgs::Float64::ConstPtr& msg){
 
     fnd.data = fabs(msg->data * p_gain);
 
 	outPub.publish(fnd);
 }
 
-void readInput(const std_msgs::Float32::ConstPtr& msg){
+void readInput(const std_msgs::Float64::ConstPtr& msg){
 
     if( fabs(msg->data) < input_saturation )
         input_data = 0.0;
@@ -116,49 +113,50 @@ int main(int argc, char *argv[]){
     
     ros::init(argc, argv, "dynamic_controller");
 
-    nh = new ros::NodeHandle("~");
+    ros::NodeHandle nh_private("~");
+    ros::NodeHandle nh_public;
      
-    nh->param("in_topic" , in_topic, string("in_topic") );
+    nh_private.param("in_topic" , in_topic, string("in_topic") );
     
-    nh->param("out_topic" , out_topic, string("dyn_force") );
+    nh_private.param("out_topic" , out_topic, string("dyn_force") );
 
     string pause_service("");
-    nh->param("pause_service" , pause_service, string("pause") );
+    nh_private.param("pause_service" , pause_service, string("pause") );
     string pause_kf_service("");
-    nh->param("pause_kf_service" , pause_kf_service, string("pause") );
+    nh_private.param("pause_kf_service" , pause_kf_service, string("pause") );
 
-    nh->param("i_gain" , i_gain, (float)20.0 );
-    nh->param("p_gain" , p_gain, (float)20.0 );
+    nh_private.param("i_gain" , i_gain, (float)20.0 );
+    nh_private.param("p_gain" , p_gain, (float)20.0 );
 
-    nh->param("integral_action" , b_integral_action, false );
+    nh_private.param("integral_action" , b_integral_action, false );
     double Hz;
-    nh->param("hz" , Hz, 500.0 );
+    nh_private.param("hz" , Hz, 500.0 );
     double Ts = 1.0/Hz;
-    nh->param("input_saturation" , input_saturation, 0.0 );
+    nh_private.param("input_saturation" , input_saturation, 0.0 );
 
     double timer_max;
     double cut_freq;
     double timer_state;
     bool b_use_int = false;
-    nh->param("timer_max" , timer_max, 5.0 );
-    nh->param("cut_freq" , cut_freq, 0.3 );
+    nh_private.param("timer_max" , timer_max, 5.0 );
+    nh_private.param("cut_freq" , cut_freq, 0.3 );
 
 	// Publisher
     if(b_integral_action){
-	    in_sub = nh->subscribe(in_topic, 1, readInput);
+	    in_sub = nh_public.subscribe(in_topic, 1, readInput);
         tf_integrator = new TF_INTEGRATOR(1.0/Hz, i_gain);
         tf_filter = new TF_FIRST_ORDER_FILTER(cut_freq, 1.0/Hz);
         timer_state = timer_max;
         b_use_int = false;
     }
     else
-        in_sub = nh->subscribe(in_topic, 1, readInput_and_pub);
+        in_sub = nh_public.subscribe(in_topic, 1, readInput_and_pub);
 
-	outPub = nh->advertise<std_msgs::Float32>( out_topic,1);
+	outPub = nh_public.advertise<std_msgs::Float64>( out_topic,1);
 
-    ros::ServiceServer servicePause = nh -> advertiseService(pause_service, pause_callbk);
+    ros::ServiceServer servicePause = nh_public.advertiseService(pause_service, pause_callbk);
 
-    client_pause_kf = nh -> serviceClient<std_srvs::SetBool>(pause_kf_service);
+    client_pause_kf = nh_public.serviceClient<std_srvs::SetBool>(pause_kf_service);
 
     if(b_integral_action){
 

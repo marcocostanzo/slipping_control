@@ -145,7 +145,7 @@
         <arg name="dyn_itimer_max" value="2.0"/>
         <arg name="dyn_cut_freq" value="0.05"/>
         <arg name="grasp_force_to_apply_before_contact" value="10.0"/>
-        <arg name="grasp_contact_force_thr" value="2.0E-3"/>
+        <arg name="grasp_contact_force_thr" value="0.8"/>
         <arg name="grasp_force_time_ratio" value="3.0"/> <!-- [N/s] -->
         <arg name="grasp_frequency" value="500.0"/>
         <arg name="pivoting_max_time" value="120.0"/>

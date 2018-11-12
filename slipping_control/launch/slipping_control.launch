@@ -23,7 +23,7 @@
 	<arg name="dyn_itimer_max" default="2.0"/>
 	<arg name="dyn_cut_freq" default="0.05"/>
 	<arg name="grasp_force_to_apply_before_contact" default="10.0"/>
-	<arg name="grasp_contact_force_thr" default="2.0E-3"/>
+	<arg name="grasp_contact_force_thr" default="0.8"/>
 	<arg name="grasp_force_time_ratio" default="3.0"/> <!-- [N/s] -->
 	<arg name="grasp_frequency" default="500.0"/>
 	<arg name="pivoting_max_time" default="120.0"/>

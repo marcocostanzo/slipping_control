@@ -17,8 +17,8 @@
     <!-- Finger Connection -->
     <arg name="serial_port_finger0" default="/dev/ttyUSB0" />
     <arg name="serial_port_finger1" default="/dev/ttyUSB1" />
-    <arg name="finger0_code" default="#H003-28A" />
-    <arg name="finger1_code" default="#H004-28A" />
+    <arg name="finger0_code" default="#H003_resina" />
+    <arg name="finger1_code" default="#H004_resina" />
 
     <!-- Measure Filtering -->
     <arg name="cut_freq_filter_voltage" default="20.0" />

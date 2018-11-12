@@ -38,7 +38,7 @@
     <arg name="remove_bias_srv" value="remove_bias" />
     <arg name="width_topic" value="width" />
 
-    <group ns="$(arg gripper_model)">
+    <group ns="/$(arg gripper_model)">
 
     <include file="$(find sun_wsg50_control)/launch/wsg50_control.launch">
 
@@ -180,8 +180,8 @@
         <arg name="kf_min_gen_max_force" value="0.001"/>
 
         <!-- Sub -->
-        <arg name="contact_force0_topic" value="$(arg name_space_finger0)/$(arg contact_force_topic)"/>
-        <arg name="contact_force1_topic" value="$(arg name_space_finger1)/$(arg contact_force_topic)"/>
+        <arg name="contact_force0_topic" value="/$(arg gripper_model)/$(arg name_space_finger0)/$(arg contact_force_topic)"/>
+        <arg name="contact_force1_topic" value="/$(arg gripper_model)/$(arg name_space_finger1)/$(arg contact_force_topic)"/>
         <arg name="grasp_force_topic" value="$(arg grasp_force_topic)"/>
         <arg name="total_wrench_topic" value="$(arg wrench_topic)"/>
 

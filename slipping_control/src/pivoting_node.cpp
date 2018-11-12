@@ -208,8 +208,8 @@ public:
 
     }
 
-    void readGraspForce(const geometry_msgs::WrenchStamped::ConstPtr& forceMsg){
-        fz = fabs(forceMsg->wrench.force.z);
+    void readGraspForce(const std_msgs::Float64::ConstPtr& forceMsg){
+        fz = fabs(forceMsg->data);
     }
 
 

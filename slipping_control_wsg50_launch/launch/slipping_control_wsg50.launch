@@ -37,6 +37,8 @@
     <arg name="contact_force_topic" value="contact_force" />
     <arg name="remove_bias_srv" value="remove_bias" />
     <arg name="width_topic" value="width" />
+    <arg name="finger_contact_wrench_topic" value="contact_wrench"/>
+    <arg name="centroid_topic" value="centroid"/>
 
     <group ns="/$(arg gripper_model)">
 
@@ -103,18 +105,21 @@
 
         <arg name="grasp_force_topic" value="$(arg grasp_force_topic)"/>
 
+        <arg name="finger_contact_wrench_topic" value="$(arg finger_contact_wrench_topic)"/>
+        <arg name="centroid_topic" value="$(arg centroid_topic)"/>
+
     </include>
 
     <node name="wrench_stamped_2_contact_force_stamped" ns="$(arg name_space_finger0)" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 
-        <param name="input_topic" type="string" value="$(arg wrench_topic)"/>
+        <param name="input_topic" type="string" value="$(arg finger_contact_wrench_topic)"/>
 
         <param name="output_topic" type="string" value="$(arg contact_force_topic)"/>
 
     </node>
     <node name="wrench_stamped_2_contact_force_stamped" ns="$(arg name_space_finger1)" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 
-        <param name="input_topic" type="string" value="$(arg wrench_topic)"/>
+        <param name="input_topic" type="string" value="$(arg finger_contact_wrench_topic)"/>
 
         <param name="output_topic" type="string" value="$(arg contact_force_topic)"/>
 

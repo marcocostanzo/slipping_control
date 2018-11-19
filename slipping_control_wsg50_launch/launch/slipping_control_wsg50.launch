@@ -125,6 +125,27 @@
 
     </node>
 
+    <node name="to_matlab" ns="$(arg name_space_finger0)" pkg="slipping_control_wsg50_launch" type="to_matlab" output="screen">
+
+        <param name="contact_forces_topic" type="string" value="$(arg contact_force_topic)"/>
+
+        <param name="max_forces_topic" type="string" value="/$(arg gripper_model)/static_control_0/max_force"/>
+
+        <param name="virtual_cor_topic" type="string" value="/$(arg gripper_model)/static_control_0/cor"/>
+
+        <param name="kf_measure_topic" type="string" value="/$(arg gripper_model)/extimated_measure_topic"/>
+
+    </node>
+    <node name="to_matlab" ns="$(arg name_space_finger1)" pkg="slipping_control_wsg50_launch" type="to_matlab" output="screen">
+
+        <param name="contact_forces_topic" type="string" value="$(arg contact_force_topic)"/>
+
+        <param name="max_forces_topic" type="string" value="/$(arg gripper_model)/static_control_1/max_force"/>
+
+        <param name="virtual_cor_topic" type="string" value="/$(arg gripper_model)/static_control_1/cor"/>
+
+    </node>
+
     <include file="$(find slipping_control)/launch/slipping_control.launch">
 
         <!-- Settings -->

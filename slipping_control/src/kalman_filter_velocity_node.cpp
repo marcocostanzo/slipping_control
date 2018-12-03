@@ -121,13 +121,13 @@ bool pause_callbk(std_srvs::SetBool::Request  &req,
 
 	if(req.data){
 
-        stopFilter();
-		cout << HEADER_PRINT YELLOW "PAUSED!" CRESET << endl;
+        //stopFilter();
+		//cout << HEADER_PRINT YELLOW "PAUSED!" CRESET << endl;
 
 	} else{
         if(paused){
             startFilter();
-		    cout << HEADER_PRINT GREEN "STARTED!" CRESET << endl;
+		    cout << HEADER_PRINT GREEN "RE-STARTED!" CRESET << endl;
         }
     }
 

@@ -1,5 +1,5 @@
 /*
-    ROS node to calculate the dynamic contribution
+    ROS node to calculate the dynamic contribution (PI)
 
     Copyright 2018 Università della Campania Luigi Vanvitelli
 
@@ -25,6 +25,7 @@
 #include "std_srvs/SetBool.h"
 #include "Helper.h"
 
+#include <TF_SISO/TF_INTEGRATOR.h>
 #include <TF_SISO/TF_FIRST_ORDER_FILTER.h>
 
 #define HEADER_PRINT BOLDYELLOW "[Dynamic Controller]: " CRESET
@@ -39,11 +40,13 @@ ros::ServiceClient client_pause_kf;
 string in_topic("");
 string out_topic("");
 
-double i_gain = 0.0;
-double integrator_dc_gain = 1E2;
-double p_gain;
+float i_gain = 0.0;
+float p_gain;
 double input_data;
-TF_FIRST_ORDER_FILTER* tf_pseudo_integrator;
+double input_saturation;
+bool b_integral_action;
+TF_INTEGRATOR* tf_integrator;
+TF_FIRST_ORDER_FILTER* tf_filter;
 
 std_msgs::Float64 fnd;
 void readInput_and_pub(const std_msgs::Float64::ConstPtr& msg){
@@ -55,7 +58,10 @@ void readInput_and_pub(const std_msgs::Float64::ConstPtr& msg){
 
 void readInput(const std_msgs::Float64::ConstPtr& msg){
 
-    input_data = msg->data;
+    if( fabs(msg->data) < input_saturation )
+        input_data = 0.0;
+    else
+        input_data = msg->data;
 
 }
 
@@ -74,8 +80,9 @@ bool pause_callbk(std_srvs::SetBool::Request  &req,
 
     if(req.data){
 
-        if(i_gain!=0.0){
-           tf_pseudo_integrator->reset(); 
+        if(b_integral_action){
+           tf_integrator->reset(); 
+           tf_filter->reset();
         }
 
         fnd.data = 0.0;
@@ -87,8 +94,9 @@ bool pause_callbk(std_srvs::SetBool::Request  &req,
     } else {
 
         if(paused){
-            if(i_gain!=0.0){
-                tf_pseudo_integrator->reset(); 
+            if(b_integral_action){
+                tf_integrator->reset(); 
+                tf_filter->reset();
             }
             cout << HEADER_PRINT GREEN "STARTED!" CRESET << endl;
         }
@@ -117,18 +125,29 @@ int main(int argc, char *argv[]){
     string pause_kf_service("");
     nh_private.param("pause_kf_service" , pause_kf_service, string("pause") );
 
-    nh_private.param("i_gain" , i_gain, 20.0 );
-    nh_private.param("p_gain" , p_gain, 20.0 );
-    nh_private.param("integrator_dc_gain" , integrator_dc_gain, 1E2 );
+    nh_private.param("i_gain" , i_gain, (float)20.0 );
+    nh_private.param("p_gain" , p_gain, (float)20.0 );
 
+    nh_private.param("integral_action" , b_integral_action, false );
     double Hz;
     nh_private.param("hz" , Hz, 500.0 );
     double Ts = 1.0/Hz;
+    nh_private.param("input_saturation" , input_saturation, 0.0 );
+
+    double timer_max;
+    double cut_freq;
+    double timer_state;
+    bool b_use_int = false;
+    nh_private.param("timer_max" , timer_max, 5.0 );
+    nh_private.param("cut_freq" , cut_freq, 0.3 );
 
 	// Publisher
-    if(i_gain!=0.0){
+    if(b_integral_action){
 	    in_sub = nh_public.subscribe(in_topic, 1, readInput);
-        tf_pseudo_integrator = new TF_FIRST_ORDER_FILTER(integrator_dc_gain/i_gain, 1.0/Hz, integrator_dc_gain);
+        tf_integrator = new TF_INTEGRATOR(1.0/Hz, i_gain);
+        tf_filter = new TF_FIRST_ORDER_FILTER(cut_freq, 1.0/Hz);
+        timer_state = timer_max;
+        b_use_int = false;
     }
     else
         in_sub = nh_public.subscribe(in_topic, 1, readInput_and_pub);
@@ -139,7 +158,7 @@ int main(int argc, char *argv[]){
 
     client_pause_kf = nh_public.serviceClient<std_srvs::SetBool>(pause_kf_service);
 
-    if(i_gain!=0.0){
+    if(b_integral_action){
 
         //Main Loop
         ros::Rate loop_rate(Hz);
@@ -150,9 +169,32 @@ int main(int argc, char *argv[]){
                 loop_rate.sleep();
                 continue;
             }
+
+            //Timer
+            if(input_data == 0.0 && timer_state > 0.0){
+                timer_state -= Ts;
+            } else if(input_data != 0.0) {
+                timer_state = timer_max;
+            }
+
+            //Switch sys
+            if( b_use_int &&  timer_state <= 0.0){ //Switch to filter
+            cout << HEADER_PRINT << "TO FILTER!" << endl;
+                tf_filter->setState( fnd.data );
+                b_use_int = false;
+            } else if( !b_use_int && timer_state > 0.0 ){ //Switch to integrator
+            cout << HEADER_PRINT << "TO INT!" << endl;
+                tf_integrator->setState( fnd.data );
+                b_use_int = true;
+            }
             
-            //Apply control
-            fnd.data = fabs( tf_pseudo_integrator->apply(input_data) + p_gain * input_data );          
+            //Apply correct filter
+            if(b_use_int){
+                fnd.data = fabs( tf_integrator->apply(input_data) + p_gain * input_data );
+            } else {
+                fnd.data = fabs( tf_filter->apply(0.0) );
+            }
+            
             
             outPub.publish(fnd);
 

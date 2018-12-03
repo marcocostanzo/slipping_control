@@ -166,6 +166,7 @@
         <arg name="sigma_03" value="1.0E2"/>
         <arg name="dyn_p_gain" value="20.0"/>
         <arg name="dyn_i_gain" value="20.0"/>
+        <arg name="dyn_integrator_dc_gain" value="1E2"/>
         <arg name="dyn_frequency" value="2000.0"/>
         <arg name="dyn_input_saturation" value="3.0E-2"/>
         <arg name="dyn_itimer_max" value="2.0"/>

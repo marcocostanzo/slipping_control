@@ -92,6 +92,7 @@ string pause_force_service_client_str("");
 string homing_gripper_service_client_str("");
 string remove_bias_0_service_client_str("");
 string remove_bias_1_service_client_str("");
+string pause_kf_service_client_str("");
 
 //Action client
 string grasping_action_client_str("");
@@ -122,6 +123,7 @@ ros::ServiceClient client_pause_dyn_controller;
 ros::ServiceClient client_pause_force;
 ros::ServiceClient client_remove_bias_0;
 ros::ServiceClient client_remove_bias_1;
+ros::ServiceClient client_pause_kf;
 
 //actionclient
 actionlib::SimpleActionClient<slipping_control_common::PivotingAction>* action_client_pivoting;
@@ -130,6 +132,7 @@ actionlib::SimpleActionClient<slipping_control_common::GraspingAction>* action_c
 /* USER FUN */
 bool pauseStaticControl(bool b, bool control_rotation);
 bool pauseDynControl(bool b);
+bool pauseKf(bool b);
 bool pauseForceControl(bool b);
 bool pauseAll();
 bool homing();  //(pause all)
@@ -378,6 +381,7 @@ int main(int argc, char *argv[]){
     nh_private.param("homing_gripper_service" , homing_gripper_service_client_str, string("homing_gripper_service") );
     nh_private.param("remove_bias_0_service" , remove_bias_0_service_client_str, string("remove_bias_0_service") );
     nh_private.param("remove_bias_1_service" , remove_bias_1_service_client_str, string("remove_bias_1_service") );
+    nh_private.param("pause_kf_service" , pause_kf_service_client_str, string("pause_kf_service") );
 
     //action_clients
     nh_private.param("action_client_grasping" , grasping_action_client_str, string("action_client_grasping") );
@@ -408,6 +412,7 @@ int main(int argc, char *argv[]){
     client_homing_gripper = nh_public.serviceClient<std_srvs::Empty>(homing_gripper_service_client_str);
     client_remove_bias_0 = nh_public.serviceClient<std_srvs::Empty>(remove_bias_0_service_client_str);
     client_remove_bias_1 = nh_public.serviceClient<std_srvs::Empty>(remove_bias_1_service_client_str);
+    client_pause_kf = nh_public.serviceClient<std_srvs::SetBool>(pause_kf_service_client_str);
 
     // create the action client
     // true causes the client to spin its own thread
@@ -477,6 +482,10 @@ bool pauseStaticControl(bool b, bool control_rotation){
 
 bool pauseDynControl(bool b){
     return sendSetPauseSrv(client_pause_dyn_controller , b , "Dynamic Controller");
+}
+
+bool pauseKf(bool b){
+    return sendSetPauseSrv(client_pause_kf , b , "Kalman Filter");
 }
 
 bool pauseAll(){

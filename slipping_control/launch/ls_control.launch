@@ -1,5 +1,7 @@
 <launch>
 
+    <arg name="sign_correction" default="1.0"/>
+
     <!-- PARAMS -->
     <arg name="beta" default="0.00349"/>
     <arg name="gamma" default="0.109"/>
@@ -12,6 +14,10 @@
     <arg name="compute_static_trigger_taun_min" default="0.002"/>
     <arg name="compute_static_trigger_taun_max" default="0.010"/>
     <arg name="compute_static_trigger_taun_when_trigger_active" default="0.0005"/>
+
+    <!--FILTER -->
+    <arg name="cut_freq_filter_cor" default="50.0"/>
+    <arg name="rate_filter_cor" default="300.0"/>
 
     <!-- Cor_tilde -->
     <arg name="max_sigma" value="30.0"/>
@@ -31,6 +37,7 @@
 
     <!-- Sub -->
     <arg name="compute_ls_contact_force_topic" default="contact_force"/>
+    <arg name="compute_ls_contact_force_topic_filter" default="contact_force/filter"/>
     <arg name="compute_static_contact_force_topic" default="$(arg compute_ls_contact_force_topic)"/>
 
     <!-- Pubs -->
@@ -43,11 +50,15 @@
     <!-- Srv -->
     <arg name="compute_static_pause_service" default="compute_static/pause"/>
 	<arg name="compute_static_control_rotation_service" default="compute_static/control_rotation"/>
+    <arg name="compute_ls_ch_mu_service" default="ls/ch_mu"/>
+    <arg name="compute_static_ch_mu_service" default="static/ch_mu"/>
 
     
 <!-- -->
 
 	<node name="compute_ls" pkg="slipping_control" type="compute_ls" output="screen">
+
+        <param name="sign_correction" value="$(arg sign_correction)"/>
 
         <!-- PARAMS -->
         <param name="beta" value="$(arg beta)"/>
@@ -74,13 +85,17 @@
         <param name="min_fn_min" value="$(arg compute_ls_min_fn_min)"/>
 
         <!-- Sub -->
-        <param name="contact_force_topic" value="$(arg compute_ls_contact_force_topic)"/>
+        <param name="contact_force_topic" value="$(arg compute_ls_contact_force_topic_filter)"/>
+        <param name="contact_force_no_filter_topic" value="$(arg compute_ls_contact_force_topic)"/>
 
         <!-- Pubs -->
         <param name="cor_topic" value="$(arg cor_topic)"/>
         <param name="min_force_topic" value="$(arg min_force_topic)"/>
         <param name="max_force_topic" value="$(arg max_force_topic)"/>
         <param name="generalized_force_topic" value="$(arg generalized_force_topic)"/>
+
+        <!-- Srv -->
+        <param name="service_ch_mu" value="$(arg compute_ls_ch_mu_service)"/>
 
 	</node>
     
@@ -118,9 +133,22 @@
         <!-- Srv -->
         <param name="pause_service" value="$(arg compute_static_pause_service)"/>
 		<param name="control_rotation_service" value="$(arg compute_static_control_rotation_service)"/>
+        <param name="service_ch_mu" value="$(arg compute_static_ch_mu_service)"/>
 
 	</node>
 
 <!-- --> 
+
+    <node name="filter_cor" pkg="slipping_control" type="filter_cor" output="screen">
+
+        <param name="in_topic" type="string" value="$(arg cor_topic)"/>
+
+        <param name="out_topic" type="string" value="$(arg cor_topic)/filter"/>
+
+        <param name="cut_freq" value="$(arg cut_freq_filter_cor)"/>
+
+        <param name="rate" value="$(arg rate_filter_cor)"/>
+
+    </node>
 
 </launch>

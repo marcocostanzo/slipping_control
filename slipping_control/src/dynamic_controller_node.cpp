@@ -128,7 +128,7 @@ int main(int argc, char *argv[]){
 	// Publisher
     if(i_gain!=0.0){
 	    in_sub = nh_public.subscribe(in_topic, 1, readInput);
-        tf_pseudo_integrator = new TF_FIRST_ORDER_FILTER(integrator_dc_gain/i_gain, 1.0/Hz, integrator_dc_gain);
+        tf_pseudo_integrator = new TF_FIRST_ORDER_FILTER(i_gain/integrator_dc_gain/2.0/M_PI, 1.0/Hz, integrator_dc_gain);
     }
     else
         in_sub = nh_public.subscribe(in_topic, 1, readInput_and_pub);

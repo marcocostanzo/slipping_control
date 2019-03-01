@@ -29,6 +29,7 @@
 #include "Helper.h"
 #include "learn_algs/learn_algs.h"
 #include "slipping_control_common/functions.h"
+#include "slipping_control_common/SetMu.h"
 
 
 #define HEADER_PRINT BOLDYELLOW "[Compute Static]: " CRESET 
@@ -40,6 +41,8 @@ using namespace TooN;
 
 //Params
 LS_INFO ls_info;
+double (*ls_function)(double);
+double (*diff_ls_function)(double);
 
 //Trigger
 bool taun_trigger_state = true;
@@ -78,7 +81,7 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
     if(b_use_rotation){
 
         //Trigger
-        double taun_triggered = SchmittTrigger( msg->forces.taun, taun_trigger_state, TAUN_MIN, TAUN_MAX, TAUN_WHEN_TRIGGER_ACTIVE );
+        double taun_triggered = SchmittTrigger( fabs(msg->forces.taun), taun_trigger_state, TAUN_MIN, TAUN_MAX, TAUN_WHEN_TRIGGER_ACTIVE );
 
         //Calc min Fn
         bool b_max_iter;
@@ -91,16 +94,16 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
         double x = findZero(    initial_point,
                                 boost::bind(min_force_Jcst, 
                                             _1, 
-                                            limitSurface_line,
+                                            ls_function,
                                             msg->forces.ft,
-                                            msg->forces.taun,
+                                            fabs(msg->forces.taun),
                                             ls_info
                                             ), 
                                 boost::bind(min_force_gradJ, 
                                             _1, 
-                                            diff_limitSurface_line,
+                                            diff_ls_function,
                                             msg->forces.ft,
-                                            msg->forces.taun,
+                                            fabs(msg->forces.taun),
                                             ls_info
                                             ), 
                                 GD_GAIN, 
@@ -110,7 +113,7 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
                                 b_max_iter );
 
         if( !isnan(x) && x!=0.0 && !b_max_iter ){
-            Fn_min.data = fabs(x);
+            Fn_min.data = secure_gain*fabs(x);
         }
         //TO DO... min only in this case?
         if(Fn_min.data < MIN_FN_MIN){
@@ -168,6 +171,27 @@ bool rotation_callbk(slipping_control_common::FnsParams::Request  &req,
 
 }
 
+bool ch_mu_callbk(slipping_control_common::SetMu::Request  &req, 
+   		 		slipping_control_common::SetMu::Response &res){
+
+    cout << HEADER_PRINT << "Service Change mu: " << req.mu << endl;
+
+    if(req.mu<0.0){
+        cout << HEADER_PRINT << BOLDRED "ERROR!" << endl;
+        res.success = false;
+        return true;
+    }
+
+    ls_info.mu_ = req.mu;
+    ls_info.alpha_ = computeAlpha( ls_info );
+
+    cout << HEADER_PRINT << GREEN "Service Change mu OK " << endl;
+
+    res.success = true;
+	return true;
+
+}
+
 int main(int argc, char *argv[]){
     
     ros::init(argc, argv, "compute_static_force");
@@ -180,6 +204,15 @@ int main(int argc, char *argv[]){
     nh_private.param("gamma" , ls_info.gamma_, 0.3333 );
     nh_private.param("mu" , ls_info.mu_, 0.8 );
     ls_info.alpha_ = computeAlpha( ls_info );
+    bool line_approx;
+    nh_private.param("line_approx" , line_approx, false );
+    if(line_approx){
+        ls_function = limitSurface_line;
+        diff_ls_function = diff_limitSurface_line;
+    } else {
+        ls_function = limitSurface_true;
+        diff_ls_function = diff_limitSurface_true;
+    }
 
     //Trigger
     nh_private.param("trigger_taun_min" , TAUN_MIN, 0.002 );
@@ -217,6 +250,12 @@ int main(int argc, char *argv[]){
     ros::ServiceServer servicePause = nh_public->advertiseService(pause_service, pause_callbk);
 
     ros::ServiceServer serviceRotation = nh_public->advertiseService(control_rotation_str, rotation_callbk);
+sleep(1); cout << "mu=" << ls_info.mu_ << "secure gain = " << secure_gain << "line_approx" << (line_approx ? "true" : "false") << endl;
+
+        //Server Mu
+    string mu_server_str("");
+    nh_private.param("service_ch_mu" , mu_server_str, string("change_mu") );
+    ros::ServiceServer serviceChMu = nh_public->advertiseService(mu_server_str, ch_mu_callbk);
 
     ros::spin();
 

@@ -24,9 +24,13 @@
 #include "slipping_control_common/VirtualCORStamped.h"
 #include "slipping_control_common/MaxForcesStamped.h"
 #include "std_msgs/Float64.h"
+#include "std_msgs/Float64MultiArray.h"
 #include "slipping_control_common/functions.h"
 #include "Helper.h"
 #include "learn_algs/learn_algs.h"
+#include "slipping_control_common/SetMu.h"
+
+#define HEADER_PRINT BOLDYELLOW "[Compute LS]: " CRESET 
 
 using namespace TooN;
 using namespace std;
@@ -35,18 +39,41 @@ slipping_control_common::VirtualCORStamped cor_msg;
 slipping_control_common::MaxForcesStamped max_forces_msg;
 std_msgs::Float64 Generalized_force;
 std_msgs::Float64 Fn_min;
+std_msgs::Float64MultiArray msg_dbg;
 
 ros::Publisher pubCOR;
 ros::Publisher pubMinForce;
 ros::Publisher pubMaxForce;
 ros::Publisher pubGenerForce;
+ros::Publisher pubDebug;
+
+//TRIGGER FCN
+double trigger_fcn( double x_k, double & s_k, double DELTA ){
+
+    if(s_k > 0.0 && x_k < -DELTA ){
+        s_k = -1.0;
+    } else if( s_k < 0.0 && x_k > DELTA ){
+        s_k = 1.0;
+    }
+
+    if( fabs(x_k) > DELTA ){
+        return x_k;
+    } else{
+        return DELTA * s_k;
+    }
+
+}
 
 //Params
 LS_INFO ls_info;
+double sign_correction;
 
 //Trigger
-bool taun_trigger_state = true;
+//bool taun_trigger_state = true;
+double taun_trigger_state = -1.0;
 double TAUN_MIN, TAUN_MAX, TAUN_WHEN_TRIGGER_ACTIVE;
+
+bool schmitt_taun_trigger_state = true;
 
 //Cor_tilde
 double MAX_SIGMA, MAX_COR_TILDE; //max sigma should be a param of function cor_tilde
@@ -59,12 +86,34 @@ double DEFAULT_MIN_FN;
 //Secure vars
 double MIN_FN_MIN;
 
+double taun_no_filter = 0.0, ft_no_filter = 0.0, fn_no_filter = 0.0;
+
+void contact_force_no_filter_Callback (const slipping_control_common::ContactForcesStamped::ConstPtr& msg) {
+    taun_no_filter = msg->forces.taun;
+    ft_no_filter = msg->forces.ft;
+    fn_no_filter = msg->forces.ft;
+}
+
 void contact_force_Callback (const slipping_control_common::ContactForcesStamped::ConstPtr& msg) {
 
-    //Trigger
-    double taun_triggered = SchmittTrigger( msg->forces.taun, taun_trigger_state, TAUN_MIN, TAUN_MAX, TAUN_WHEN_TRIGGER_ACTIVE ); 
+    //save segn_tau
+    double segn_tau = 1.0;
+    if(msg->forces.taun < 0.0)
+        segn_tau = -1.0;
 
-    cor_msg.cor.sigma = calculateSigma( msg->forces.ft, taun_triggered, ls_info );
+    double tau_abs = fabs(msg->forces.taun);
+
+
+    //cor_msg.cor.sigma = calculateSigma( msg->forces.ft, tau_abs, ls_info );
+    cor_msg.cor.sigma = calculateSigma( msg->forces.ft, 
+                                        SchmittTrigger( 
+                                                        tau_abs, 
+                                                        schmitt_taun_trigger_state, 
+                                                        0.002, 
+                                                        0.005, 
+                                                        0.0 
+                                                        ), 
+                                        ls_info );
 
     cor_msg.cor.virtual_cor_tilde = computeCOR_R(cor_msg.cor.sigma, MAX_SIGMA);
     if(cor_msg.cor.virtual_cor_tilde > MAX_COR_TILDE){
@@ -84,14 +133,14 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
                                         _1, 
                                         limitSurface_true,
                                         msg->forces.ft,
-                                        msg->forces.taun,
+                                        tau_abs,
                                         ls_info
                                         ), 
                             boost::bind(min_force_gradJ, 
                                         _1, 
                                         diff_limitSurface_true,
                                         msg->forces.ft,
-                                        msg->forces.taun,
+                                        tau_abs,
                                         ls_info
                                         ), 
                             GD_GAIN, 
@@ -108,15 +157,15 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
     }
 
     cor_msg.cor.virtual_radius = ls_info.beta_ * pow(Fn_min.data, ls_info.gamma_ );
-    cor_msg.cor.virtual_cor = cor_msg.cor.virtual_cor_tilde * cor_msg.cor.virtual_radius;
+    cor_msg.cor.virtual_cor = -segn_tau* cor_msg.cor.virtual_cor_tilde * cor_msg.cor.virtual_radius;
 
     max_forces_msg.forces.force_frac = msg->forces.fn/Fn_min.data;
     max_forces_msg.forces.ft_max = msg->forces.ft * max_forces_msg.forces.force_frac;
-    max_forces_msg.forces.taun_max = msg->forces.taun * pow( max_forces_msg.forces.force_frac , ls_info.gamma_+1.0 );
+    max_forces_msg.forces.taun_max = tau_abs * pow( max_forces_msg.forces.force_frac , ls_info.gamma_+1.0 );
 
-    max_forces_msg.forces.generalized_max_force = max_forces_msg.forces.taun_max + max_forces_msg.forces.ft_max * cor_msg.cor.virtual_cor;
+    max_forces_msg.forces.generalized_max_force = max_forces_msg.forces.taun_max + max_forces_msg.forces.ft_max * fabs(cor_msg.cor.virtual_cor);
 
-    Generalized_force.data = msg->forces.taun + msg->forces.ft * cor_msg.cor.virtual_cor;
+    Generalized_force.data = sign_correction*( segn_tau*fabs(taun_no_filter) - ft_no_filter * cor_msg.cor.virtual_cor);
 
     //Fill headers
     cor_msg.header = msg->header;
@@ -128,6 +177,38 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
     pubMaxForce.publish(max_forces_msg);
     pubGenerForce.publish(Generalized_force);
 
+    //DBG
+    msg_dbg.data[0] = msg->forces.fn;
+    msg_dbg.data[1] = msg->forces.ft;
+    msg_dbg.data[2] = msg->forces.taun;
+    msg_dbg.data[3] = Fn_min.data;
+    msg_dbg.data[4] = max_forces_msg.forces.ft_max;
+    msg_dbg.data[5] = max_forces_msg.forces.taun_max;
+    msg_dbg.data[6] = ros::Time::now().toSec();
+
+    pubDebug.publish(msg_dbg);
+
+}
+
+bool ch_mu_callbk(slipping_control_common::SetMu::Request  &req, 
+   		 		slipping_control_common::SetMu::Response &res){
+
+    cout << HEADER_PRINT << "Service Change mu: " << req.mu << endl;
+
+    if(req.mu<0.0){
+        cout << HEADER_PRINT << BOLDRED "ERROR!" << endl;
+        res.success = false;
+        return true;
+    }
+
+    ls_info.mu_ = req.mu;
+    ls_info.alpha_ = computeAlpha( ls_info );
+
+    cout << HEADER_PRINT << GREEN "Service Change mu OK " << endl;
+
+    res.success = true;
+	return true;
+
 }
 
 int main(int argc, char *argv[])
@@ -137,6 +218,10 @@ int main(int argc, char *argv[])
     
     ros::NodeHandle nh_private("~");
     ros::NodeHandle nh_public;
+
+    //sing_correction
+    nh_private.param("sign_correction" , sign_correction, 1.0 );
+    taun_trigger_state = -sign_correction;
 
     //params
     nh_private.param("beta" , ls_info.beta_, 0.002 );
@@ -166,6 +251,8 @@ int main(int argc, char *argv[])
     //Sub
     string contact_force_topic_str("");
     nh_private.param("contact_force_topic" , contact_force_topic_str, string("contact_force") );
+    string contact_force_no_filter_topic_str("");
+    nh_private.param("contact_force_no_filter_topic" , contact_force_no_filter_topic_str, string("contact_force/filter") );
 
     //Pubs
     string cor_topic_str("");
@@ -179,6 +266,7 @@ int main(int argc, char *argv[])
 
     //Subs
     ros::Subscriber subContact = nh_public.subscribe( contact_force_topic_str, 1, contact_force_Callback);
+    ros::Subscriber subContactNoFilter = nh_public.subscribe( contact_force_no_filter_topic_str, 1, contact_force_no_filter_Callback);
 
     //Pubs
     pubCOR = nh_public.advertise<slipping_control_common::VirtualCORStamped>(cor_topic_str, 1);
@@ -186,7 +274,16 @@ int main(int argc, char *argv[])
     pubMaxForce = nh_public.advertise<slipping_control_common::MaxForcesStamped>(max_force_topic_str, 1);
     pubGenerForce = nh_public.advertise<std_msgs::Float64>(gen_force_topic_str, 1);
 
+    //DEBUG
+    pubDebug = nh_public.advertise<std_msgs::Float64MultiArray>("debug_LS", 1);
+    msg_dbg.data.resize(7);
+
     initANN_COR_R();
+
+    //Server Mu
+    string mu_server_str("");
+    nh_private.param("service_ch_mu" , mu_server_str, string("change_mu") );
+    ros::ServiceServer serviceChMu = nh_public.advertiseService(mu_server_str, ch_mu_callbk);
     
     ros::spin();
 

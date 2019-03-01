@@ -35,7 +35,7 @@ void wrenchCB( const geometry_msgs::WrenchStamped::ConstPtr& msg ){
 
     contact_force_msg.forces.fn = fabs(msg->wrench.force.z);
     contact_force_msg.forces.ft = sqrt( pow(msg->wrench.force.x, 2) + pow(msg->wrench.force.y, 2) );
-    contact_force_msg.forces.taun = fabs( msg->wrench.torque.z );
+    contact_force_msg.forces.taun = msg->wrench.torque.z;
 
     pubContact.publish( contact_force_msg );
 

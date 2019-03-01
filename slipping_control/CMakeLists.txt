@@ -284,3 +284,30 @@ target_link_libraries(static_combine
   ${catkin_LIBRARIES}
 )
 #########################################
+#########################################
+add_executable(filter_cor
+  src/filter_cor_node.cpp
+)
+add_dependencies(filter_cor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(filter_cor
+  ${catkin_LIBRARIES}
+)
+#########################################
+#########################################
+add_executable(filter_contact_force
+  src/filter_contact_force_node.cpp
+)
+add_dependencies(filter_contact_force ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(filter_contact_force
+  ${catkin_LIBRARIES}
+)
+#########################################
+#########################################
+add_executable(contact_force_fix
+  src/contact_force_fix_node.cpp
+)
+add_dependencies(contact_force_fix ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(contact_force_fix
+  ${catkin_LIBRARIES}
+)
+#########################################

@@ -8,23 +8,26 @@
     <arg name="finger_distance_offset" default="0.0"/>
 
     <!-- Low level force control -->
-    <arg name="force_control_gain" default="1.4" />
-    <arg name="force_control_max_force" default="20.0" />
+    <!-- <arg name="force_control_gain" default="3.4" /> -->
+    <arg name="force_control_gain" default="27.0" />
+    <arg name="force_control_max_force" default="18.0" />
     <arg name="force_control_filter" default="true" />
-    <arg name="force_control_cut_freq" default="40.0" />
-    <arg name="force_control_rate" default="200.0" />
+    <arg name="force_control_cut_freq" default="250.0" />
+    <arg name="force_control_rate" default="1000.0" />
 
     <!-- Finger Connection -->
     <arg name="serial_port_finger0" default="/dev/ttyUSB0" />
     <arg name="serial_port_finger1" default="/dev/ttyUSB1" />
-    <arg name="finger0_code" default="#H003_resina" />
-    <arg name="finger1_code" default="#H004_resina" />
+    <arg name="finger0_code" default="#H003_rigid" />
+    <arg name="finger1_code" default="#H004_rigid" />
 
     <!-- Measure Filtering -->
-    <arg name="cut_freq_filter_voltage" default="20.0" />
-    <arg name="rate_filter_voltage" default="500.0" />
-    <arg name="cut_freq_filter_wrench" default="20.0" />
-    <arg name="rate_filter_wrench" default="500.0" />
+    <arg name="cut_freq_filter_voltage" default="400.0" />
+    <arg name="rate_filter_voltage" default="800.0" />
+    <arg name="cut_freq_filter_wrench" default="0.5" />
+    <arg name="rate_filter_wrench" default="1.0" />
+    <arg name="cut_freq_filter_contact_force" default="10.0"/>
+    <arg name="rate_filter_contact_force" default="100.0"/>
 
     <!-- Fixed Vars -->
     <arg name="grasp_force_topic" value="grasp_force" />
@@ -112,16 +115,41 @@
 
     <node name="wrench_stamped_2_contact_force_stamped" ns="$(arg name_space_finger0)" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 
-        <param name="input_topic" type="string" value="$(arg finger_contact_wrench_topic)"/>
+        <!--<param name="input_topic" type="string" value="$(arg finger_contact_wrench_topic)"/>-->
+        <param name="input_topic" type="string" value="$(arg wrench_topic)"/>
 
         <param name="output_topic" type="string" value="$(arg contact_force_topic)"/>
 
     </node>
+    <node name="filter_contact_force" ns="$(arg name_space_finger0)" pkg="slipping_control" type="filter_contact_force" output="screen">
+
+        <param name="in_topic" type="string" value="$(arg contact_force_topic)"/>
+
+        <param name="out_topic" type="string" value="$(arg contact_force_topic)/filter"/>
+
+        <param name="cut_freq" value="$(arg cut_freq_filter_contact_force)"/>
+
+        <param name="rate" value="$(arg rate_filter_contact_force)"/>
+
+    </node>
+
     <node name="wrench_stamped_2_contact_force_stamped" ns="$(arg name_space_finger1)" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 
-        <param name="input_topic" type="string" value="$(arg finger_contact_wrench_topic)"/>
+        <!--<param name="input_topic" type="string" value="$(arg finger_contact_wrench_topic)"/>-->
+        <param name="input_topic" type="string" value="$(arg wrench_topic)"/>
 
         <param name="output_topic" type="string" value="$(arg contact_force_topic)"/>
+
+    </node>
+    <node name="filter_contact_force" ns="$(arg name_space_finger1)" pkg="slipping_control" type="filter_contact_force" output="screen">
+
+        <param name="in_topic" type="string" value="$(arg contact_force_topic)"/>
+
+        <param name="out_topic" type="string" value="$(arg contact_force_topic)/filter"/>
+
+        <param name="cut_freq" value="$(arg cut_freq_filter_contact_force)"/>
+
+        <param name="rate" value="$(arg rate_filter_contact_force)"/>
 
     </node>
 
@@ -153,27 +181,42 @@
         <arg name="ns_static_control1" value="static_control_1"/>
 
         <!-- PARAMS -->
-        <arg name="beta" value="0.00349"/>
-        <arg name="gamma" value="0.109"/>
-        <arg name="mu" value="1.0"/>
+        <arg name="beta" value="0.004353"/>
+        <arg name="gamma" value="0.2569"/>
+        <arg name="mu" value="0.7"/>
+        <!--<arg name="mu0" default="0.65"/>
+        <arg name="mu1" default="0.58"/> -->
+        <!-- Ottimo ?  -->
+        <!--<arg name="mu0" default="0.63"/>   
+        <arg name="mu1" default="0.55"/>-->
+        <!-- Vera ?  -->
+        <!--<arg name="mu0" default="0.82"/>
+        <arg name="mu1" default="0.77"/> -->
+        <!-- GRIPPER PIV -->
+        <arg name="mu0" default="0.80"/>
+        <arg name="mu1" default="0.76"/>
         <arg name="kf_frequency" value="2000.0"/>
-        <arg name="Io" value="1.4E-3"/>
+        <arg name="Io" value="7.3573e-04"/>
         <arg name="Mo" value="0.35"/>
-        <arg name="b" value="0.0"/>
-        <arg name="beta_o2" value="0.04"/>
-        <arg name="beta_o3" value="0.04"/>
-        <arg name="sigma_02" value="1.0E2"/>
-        <arg name="sigma_03" value="1.0E2"/>
-        <arg name="dyn_p_gain" value="20.0"/>
-        <arg name="dyn_i_gain" value="20.0"/>
-        <arg name="dyn_integrator_dc_gain" value="1E2"/>
+        <arg name="b" value="0.011"/>
+        <!--
+        <arg name="beta_o2" value="0.002"/>
+        <arg name="beta_o3" value="0.002"/>
+        -->
+        <arg name="beta_o2" value="0.02"/>
+        <arg name="beta_o3" value="0.02"/>
+        <arg name="sigma_02" value="5.0E1"/>
+        <arg name="sigma_03" value="5.0E2"/>
+        <arg name="dyn_p_gain" value="10.0"/>
+        <arg name="dyn_i_gain" value="800.0"/>
+        <arg name="dyn_integrator_dc_gain" value="1.0E1"/>
         <arg name="dyn_frequency" value="2000.0"/>
         <arg name="dyn_input_saturation" value="3.0E-2"/>
         <arg name="dyn_itimer_max" value="2.0"/>
+        <arg name="grasp_force_to_apply_before_contact" value="1.7"/>
         <arg name="dyn_cut_freq" value="0.05"/>
-        <arg name="grasp_force_to_apply_before_contact" value="10.0"/>
         <arg name="grasp_contact_force_thr" value="0.8"/>
-        <arg name="grasp_force_time_ratio" value="3.0"/> <!-- [N/s] -->
+        <arg name="grasp_force_time_ratio" value="2.0"/> <!-- [N/s] -->
         <arg name="grasp_frequency" value="500.0"/>
         <arg name="pivoting_max_time" value="120.0"/>
         <arg name="pivoting_tau_thr" value="2.0E-3"/>
@@ -183,15 +226,20 @@
         <arg name="smart_remove_fnd_time_const" value="1.0"/>
 
         <!-- Trigger -->
-        <arg name="compute_ls_trigger_taun_min" value="0.002"/>
+        <arg name="fix_sign_taun_trigger" value="0.005"/>
+        <arg name="compute_ls_trigger_taun_min" value="0.005"/>
         <arg name="compute_ls_trigger_taun_max" value="0.010"/>
         <arg name="compute_ls_trigger_taun_when_trigger_active" value="0.002"/>
         <arg name="compute_static_trigger_taun_min" value="0.002"/>
         <arg name="compute_static_trigger_taun_max" value="0.010"/>
         <arg name="compute_static_trigger_taun_when_trigger_active" value="0.0005"/>
 
+        <!--FILTER -->
+        <arg name="cut_freq_filter_cor" value="10.0"/>
+        <arg name="rate_filter_cor" value="100.0"/>
+
         <!-- Cor_tilde -->
-        <arg name="max_cor_tilde" value="0.8"/>
+        <arg name="max_cor_tilde" value="5.0"/>
 
         <!-- FindZero -> Fn_min -->
         <arg name="default_fn_min" default="20.0"/>
@@ -202,8 +250,8 @@
 
         <!-- Secure vars -->
         <arg name="compute_ls_min_fn_min" value="0.0"/>
-        <arg name="compute_static_min_fn_min" value="2.0"/>
-        <arg name="compute_static_secure_gain" value="1.2"/>
+        <arg name="compute_static_min_fn_min" value="1.0"/>
+        <arg name="compute_static_secure_gain" value="1.0"/>
         <arg name="kf_min_gen_max_force" value="0.001"/>
 
         <!-- Sub -->

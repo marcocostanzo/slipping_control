@@ -8,6 +8,8 @@
     <arg name="beta" default="0.00349"/>
     <arg name="gamma" default="0.109"/>
     <arg name="mu" default="1.0"/>
+	<arg name="mu0" default="$(arg mu)"/>
+	<arg name="mu1" default="$(arg mu)"/>
 	<arg name="kf_frequency" default="2000.0"/>
 	<arg name="Io" default="1.4E-3"/>
 	<arg name="Mo" default="0.35"/>
@@ -34,7 +36,12 @@
 	<arg name="smart_remove_fnd_rate" default="200.0"/>
 	<arg name="smart_remove_fnd_time_const" default="1.0"/>
 
+	<!--FILTER -->
+	<arg name="cut_freq_filter_cor" default="50.0"/>
+	<arg name="rate_filter_cor" default="300.0"/>
+
 	<!-- Trigger -->
+	<arg name="fix_sign_taun_trigger" default="0.002"/>
 	<arg name="compute_ls_trigger_taun_min" default="0.002"/>
     <arg name="compute_ls_trigger_taun_max" default="0.010"/>
     <arg name="compute_ls_trigger_taun_when_trigger_active" default="$(arg compute_ls_trigger_taun_min)"/>
@@ -92,13 +99,33 @@
 	<arg name="pivoting_service" default="pivoting"/>
 
 <!--///-->
+<!--FIX SIGN-->
+	<node name="contact_force_fix" pkg="slipping_control" type="contact_force_fix" output="screen">
+
+		<!-- PARAMS -->
+		<param name="taun_trigger" value="$(arg fix_sign_taun_trigger)"/>
+
+        <!-- Sub -->
+        <param name="input_topic0" value="$(arg contact_force0_topic)/filter"/>
+        <param name="input_topic1" value="$(arg contact_force1_topic)/filter"/>
+
+        <!-- Pubs -->
+        <param name="output_topic0" value="$(arg contact_force0_topic)/fix"/>
+		<param name="output_topic1" value="$(arg contact_force1_topic)/fix"/>
+		<param name="output_sign_topic" value="tau_sign"/>
+
+    </node>
+
+<!--///-->
 	<group ns="$(arg ns_static_control0)">
 		<include file="$(find slipping_control)/launch/ls_control.launch">
+
+			<arg name="sign_correction" value="1.0"/>
 
 			<!-- PARAMS -->
 			<arg name="beta" value="$(arg beta)"/>
 			<arg name="gamma" value="$(arg gamma)"/>
-			<arg name="mu" value="$(arg mu)"/>
+			<arg name="mu" value="$(arg mu0)"/>
 
 			<!-- Trigger -->
 			<arg name="compute_ls_trigger_taun_min" value="$(arg compute_ls_trigger_taun_min)"/>
@@ -107,6 +134,10 @@
 			<arg name="compute_static_trigger_taun_min" value="$(arg compute_static_trigger_taun_min)"/>
 			<arg name="compute_static_trigger_taun_max" value="$(arg compute_static_trigger_taun_max)"/>
 			<arg name="compute_static_trigger_taun_when_trigger_active" value="$(arg compute_static_trigger_taun_when_trigger_active)"/>
+
+			<!--FILTER -->
+			<arg name="cut_freq_filter_cor" value="$(arg cut_freq_filter_cor)"/>
+			<arg name="rate_filter_cor" value="$(arg rate_filter_cor)"/>
 
 			<!-- Cor_tilde -->
 			<arg name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
@@ -125,7 +156,8 @@
 
 			<!-- Sub -->
 			<arg name="compute_ls_contact_force_topic" value="$(arg contact_force0_topic)"/>
-			<arg name="compute_static_contact_force_topic" value="$(arg contact_force0_topic)"/>
+			<arg name="compute_ls_contact_force_topic_filter" default="$(arg contact_force0_topic)/fix"/>
+			<arg name="compute_static_contact_force_topic" value="$(arg contact_force0_topic)/filter"/>
 
 			<!-- Pubs -->
 			<arg name="cor_topic" value="$(arg cor_topic)"/>
@@ -144,10 +176,12 @@
 	<group ns="$(arg ns_static_control1)">
 		<include file="$(find slipping_control)/launch/ls_control.launch">
 
+			<arg name="sign_correction" value="-1.0"/>
+
 			<!-- PARAMS -->
 			<arg name="beta" value="$(arg beta)"/>
 			<arg name="gamma" value="$(arg gamma)"/>
-			<arg name="mu" value="$(arg mu)"/>
+			<arg name="mu" value="$(arg mu1)"/>
 
 			<!-- Trigger -->
 			<arg name="compute_ls_trigger_taun_min" value="$(arg compute_ls_trigger_taun_min)"/>
@@ -156,6 +190,10 @@
 			<arg name="compute_static_trigger_taun_min" value="$(arg compute_static_trigger_taun_min)"/>
 			<arg name="compute_static_trigger_taun_max" value="$(arg compute_static_trigger_taun_max)"/>
 			<arg name="compute_static_trigger_taun_when_trigger_active" value="$(arg compute_static_trigger_taun_when_trigger_active)"/>
+
+			<!--FILTER -->
+			<arg name="cut_freq_filter_cor" value="$(arg cut_freq_filter_cor)"/>
+			<arg name="rate_filter_cor" value="$(arg rate_filter_cor)"/>
 
 			<!-- Cor_tilde -->
 			<arg name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
@@ -174,7 +212,8 @@
 
 			<!-- Sub -->
 			<arg name="compute_ls_contact_force_topic" value="$(arg contact_force1_topic)"/>
-			<arg name="compute_static_contact_force_topic" value="$(arg contact_force1_topic)"/>
+			<arg name="compute_ls_contact_force_topic_filter" default="$(arg contact_force1_topic)/fix"/>
+			<arg name="compute_static_contact_force_topic" value="$(arg contact_force1_topic)/filter"/>
 
 			<!-- Pubs -->
 			<arg name="cor_topic" value="$(arg cor_topic)"/>
@@ -228,8 +267,8 @@
 		<param name="min_gen_max_force" type="double" value="$(arg kf_min_gen_max_force)"/>
 
 		<!-- Subs -->
-		<param name="cor0_topic" value="$(arg ns_static_control0)/$(arg cor_topic)"/>
-		<param name="cor1_topic" value="$(arg ns_static_control1)/$(arg cor_topic)"/>
+		<param name="cor0_topic" value="$(arg ns_static_control0)/$(arg cor_topic)/filter"/>
+		<param name="cor1_topic" value="$(arg ns_static_control1)/$(arg cor_topic)/filter"/>
 		<param name="max_gen_force0_topic" value="$(arg ns_static_control0)/$(arg max_force_topic)"/>
 		<param name="max_gen_force1_topic" value="$(arg ns_static_control1)/$(arg max_force_topic)"/>
 		<param name="gen_force0_topic" value="$(arg ns_static_control0)/$(arg generalized_force_topic)"/>
@@ -242,6 +281,13 @@
 
 		<!-- Srv -->
 		<param name="pause_service" value="kf/pause"/>
+
+		<!-- NEW PARAMS -->
+		<param name="mu0" value="$(arg mu0)"/>
+		<param name="mu1" value="$(arg mu1)"/>
+
+		<param name="contact_force0_topic" value="$(arg contact_force0_topic)"/>
+		<param name="contact_force1_topic" value="$(arg contact_force1_topic)"/>
 
 	</node>
 <!--///-->

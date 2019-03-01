@@ -66,6 +66,7 @@ actionlib_msgs
    FnsParams.srv
    Grasp.srv
    Pivoting.srv
+   SetMu.srv
  )
 
 ## Generate actions in the 'action' folder

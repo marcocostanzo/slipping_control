@@ -29,7 +29,7 @@
 #include <Kalman_Filter/Kalman_Filter_RK4.h>
 #include "slipping_control_common/VirtualCORStamped.h"
 #include "slipping_control_common/MaxForcesStamped.h"
-#include "sun_utils/MultiVector.h"
+#include "sun_utils/MultiVectorStamped.h"
 
 #include "slipping_control_common/functions.h"
 
@@ -214,15 +214,15 @@ int main(int argc, char *argv[]){
     
     //Pubs
     ros::Publisher pubExtVel = nh_public.advertise<std_msgs::Float64>(extimated_velocity_topic_str, 1);
-    ros::Publisher pubExtState = nh_public.advertise<sun_utils::MultiVector>(extimated_state_topic_str, 1);
-    ros::Publisher pubExtMeasure = nh_public.advertise<sun_utils::MultiVector>(extimated_measure_topic_str, 1);
+    ros::Publisher pubExtState = nh_public.advertise<sun_utils::MultiVectorStamped>(extimated_state_topic_str, 1);
+    ros::Publisher pubExtMeasure = nh_public.advertise<sun_utils::MultiVectorStamped>(extimated_measure_topic_str, 1);
 
     //Init Pub Mex
     std_msgs::Float64 ext_vel_msg;
-    sun_utils::MultiVector ext_state_msg;
-    ext_state_msg.data.resize(KF_DIM_STATE);
-    sun_utils::MultiVector ext_measure_msg;
-    ext_measure_msg.data.resize(KF_DIM_OUT);
+    sun_utils::MultiVectorStamped ext_state_msg;
+    ext_state_msg.data.data.resize(KF_DIM_STATE);
+    sun_utils::MultiVectorStamped ext_measure_msg;
+    ext_measure_msg.data.data.resize(KF_DIM_OUT);
     
     Vector<KF_DIM_OUT> y_hat_k_k1 = Zeros;
     
@@ -235,15 +235,18 @@ int main(int argc, char *argv[]){
             continue;
         }
 
+        //input_vector[0] = y_hat_k_k1[0] + y_hat_k_k1[1];
         y_hat_k_k1 = kf->apply( y_kf, input_vector,  W, V );
 
         //Fill Msgs
         ext_vel_msg.data = kf->get_state()[0];
-        ext_state_msg.data[0] = kf->get_state()[0];
-        ext_state_msg.data[1] = kf->get_state()[1];
-        ext_state_msg.data[2] = kf->get_state()[2];
-        ext_measure_msg.data[0] = y_hat_k_k1[0];
-        ext_measure_msg.data[1] = y_hat_k_k1[1];
+        ext_state_msg.data.data[0] = kf->get_state()[0];
+        ext_state_msg.data.data[1] = kf->get_state()[1];
+        ext_state_msg.data.data[2] = kf->get_state()[2];
+        ext_measure_msg.data.data[0] = y_hat_k_k1[0];
+        ext_measure_msg.data.data[1] = y_hat_k_k1[1];
+        ext_measure_msg.header.stamp = ros::Time::now();
+        ext_state_msg.header.stamp = ext_measure_msg.header.stamp;
 
         /*Security check*/
         if(     isnan(kf->get_state()[0]) || isnan(kf->get_state()[1]) || isnan(kf->get_state()[2]) ){
@@ -257,6 +260,7 @@ int main(int argc, char *argv[]){
         pubExtMeasure.publish(ext_measure_msg);
 
         loop_rate.sleep();
+        loop_rate.reset();
 
     }
 

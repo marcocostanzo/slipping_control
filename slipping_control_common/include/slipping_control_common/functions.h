@@ -84,4 +84,10 @@ TooN::Vector<> vel_sys_f_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>&
 
 TooN::Matrix<> vel_sys_FF_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
 
+//TRANSL
+
+TooN::Vector<> vel_sys_transl_f_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
+
+TooN::Matrix<> vel_sys_transl_FF_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
+
 #endif

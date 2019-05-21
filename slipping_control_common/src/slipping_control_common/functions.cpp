@@ -1,7 +1,7 @@
 /*
     helper functions for slipping_control
 
-    Copyright 2018 Università della Campania Luigi Vanvitelli
+    Copyright 2018-2019 Università della Campania Luigi Vanvitelli
 
     Author: Marco Costanzo <marco.costanzo@unicampania.it>
 
@@ -24,6 +24,9 @@
 
 using namespace std;
 using namespace TooN;
+
+std::vector<SIGMA_INFO> __SIGMA_INFO__; //FT
+std::vector<GAUSS_INFO> __GAUSS_INFO__; //TAUN
 
 double pow_signed( double x, double exponent )
 {
@@ -86,8 +89,7 @@ double getRadius( double fn , const LS_INFO& ls_info )
 {
     return ls_info.delta*pow(fn, ls_info.gamma );
 }
-//SIGMA_INFO __SIGMA_INFO__;
-//GAUSS_INFO __GAUSS_INFO__;
+
 double computeCOR_tilde(    
                         double sigma, 
                         double gamma,
@@ -202,12 +204,12 @@ double c_tilde_grad_J_zero(
 
 }
 
-double ft_tilde_ls_model( double c_tilde, const SIGMA_INFO& info )
+double ft_tilde_ls_model( double c_tilde, const std::vector<SIGMA_INFO>& info )
 {
 
     double ft_tilde = 0.0;
-    for( int i=0; i<info.num_sigm; i++ ){
-        ft_tilde += sigm_fun( c_tilde, info.gain[i], info.exponent[i], info.mean[i] );
+    for( int i=0; i<info.size(); i++ ){
+        ft_tilde += sigm_fun( c_tilde, info[i].gain, info[i].exponent, info[i].mean );
     }
 
     return ft_tilde;
@@ -221,12 +223,12 @@ double sigm_fun( double x, double gain, double exponent, double mean )
 
 }
 
-double d_ft_tilde_ls_model( double c_tilde, const SIGMA_INFO& info )
+double d_ft_tilde_ls_model( double c_tilde, const std::vector<SIGMA_INFO>& info )
 {
 
     double d_ft_tilde = 0.0;
-    for( int i=0; i<info.num_sigm; i++ ){
-        d_ft_tilde += d_sigm_fun( c_tilde, info.gain[i], info.exponent[i], info.mean[i] );
+    for( int i=0; i<info.size(); i++ ){
+        d_ft_tilde += d_sigm_fun( c_tilde, info[i].gain, info[i].exponent, info[i].mean );
     }
 
     return d_ft_tilde;
@@ -240,12 +242,12 @@ double d_sigm_fun( double x, double gain, double exponent, double mean )
 
 }
 
-double taun_tilde_ls_model( double c_tilde, const GAUSS_INFO& info )
+double taun_tilde_ls_model( double c_tilde, const std::vector<GAUSS_INFO>& info )
 {
 
     double taun_tilde = 0.0;
-    for( int i=0; i<info.num_gauss; i++ ){
-        taun_tilde += gauss_fun( c_tilde, info.gain[i], info.mean[i], info.sigma_square[i] );
+    for( int i=0; i<info.size(); i++ ){
+        taun_tilde += gauss_fun( c_tilde, info[i].gain, info[i].mean, info[i].sigma_square );
     }
 
     return taun_tilde;
@@ -257,12 +259,12 @@ double gauss_fun( double x, double gain, double mean, double sigma_square )
     return gain*exp( -pow( x - mean, 2 )/(2.0*sigma_square) );
 }
 
-double d_taun_tilde_ls_model( double c_tilde, const GAUSS_INFO& info )
+double d_taun_tilde_ls_model( double c_tilde, const std::vector<GAUSS_INFO>& info )
 {
 
     double d_taun_tilde = 0.0;
-    for( int i=0; i<info.num_gauss; i++ ){
-        d_taun_tilde += d_gauss_fun( c_tilde, info.gain[i], info.mean[i], info.sigma_square[i] );
+    for( int i=0; i<info.size(); i++ ){
+        d_taun_tilde += d_gauss_fun( c_tilde, info[i].gain, info[i].mean, info[i].sigma_square );
     }
 
     return d_taun_tilde;
@@ -279,7 +281,7 @@ double getFn_ls( double ft, double taun, double ft_tilde_ls, double taun_tilde_l
     if(ft_tilde_ls > 0.1){
         return (ft/ls_info.mu)/fabs(ft_tilde_ls);
     } else if(taun_tilde_ls > 0.1){
-        return pow( (taun/(2.0*ls_info.mu*ls_info.xik_nuk*ls_info.delta))/taun_tilde_ls , 1.0/(ls_info.gamma + 1.0) );
+        return pow( (fabs(taun)/(2.0*ls_info.mu*ls_info.xik_nuk*ls_info.delta))/taun_tilde_ls , 1.0/(ls_info.gamma + 1.0) );
     } else {
         //Unable to compute Fn_ls... something goes wrong...
         //Maybe no object is grasped?
@@ -302,8 +304,6 @@ void initLS_model( double k, const string& folder )
     string model_file = streamObj.str();
     boost::replace_all(model_file, ".", "_");
     model_file = folder + model_file + MODEL_FILE_EXT;
-    //DEBUG
-    cout << "Model_File = " << model_file << endl;
 
     //Open File
     FILE *f;
@@ -326,45 +326,49 @@ void initLS_model( double k, const string& folder )
         fclose(f);
         exit(-1);
     }
-cout << "ft" << endl;
+
     //Read ft_model
+    int num_sigma;
     double tmp;
     fscanf(f, "%lf,", &tmp);
-    __SIGMA_INFO__.num_sigm = (int)tmp; cout << __SIGMA_INFO__.num_sigm << endl; 
-    __SIGMA_INFO__.gain.clear();
-    __SIGMA_INFO__.exponent.clear();
-    __SIGMA_INFO__.mean.clear();
-    for( int i=0; i<__SIGMA_INFO__.num_sigm; i++ ){
-        fscanf(f, "%lf,", &tmp); cout << tmp << endl;
-        __SIGMA_INFO__.gain.push_back(tmp);
-        fscanf(f, "%lf,", &tmp); cout << tmp << endl;
-        __SIGMA_INFO__.mean.push_back(tmp);
-        fscanf(f, "%lf,", &tmp); cout << tmp << endl;
-        __SIGMA_INFO__.exponent.push_back(tmp);
+    num_sigma = (int)tmp;
+    __SIGMA_INFO__.clear();
+    __SIGMA_INFO__.resize(num_sigma);
+    for( int i=0; i<__SIGMA_INFO__.size(); i++ ){
+        fscanf(f, "%lf,", &tmp);
+        __SIGMA_INFO__[i].gain = tmp;
+        fscanf(f, "%lf,", &tmp);
+        __SIGMA_INFO__[i].mean = tmp;
+        fscanf(f, "%lf,", &tmp);
+        __SIGMA_INFO__[i].exponent = tmp;
     }
-cout << "taun" << endl;
+
     //Read taun_model
+    int num_gauss;
     fscanf(f, "%lf,", &tmp); 
-    __GAUSS_INFO__.num_gauss = (int)tmp; cout << __GAUSS_INFO__.num_gauss << endl;
-    __GAUSS_INFO__.gain.clear();
-    __GAUSS_INFO__.mean.clear();
-    __GAUSS_INFO__.sigma_square.clear();
-    for( int i=0; i<__GAUSS_INFO__.num_gauss; i++ ){
-        fscanf(f, "%lf,", &tmp); cout << tmp << endl;
-        __GAUSS_INFO__.gain.push_back(tmp);
-        fscanf(f, "%lf,", &tmp); cout << tmp << endl;
-        __GAUSS_INFO__.mean.push_back(tmp);
-        fscanf(f, "%lf,", &tmp); cout << tmp << endl;
-        __GAUSS_INFO__.sigma_square.push_back(pow(tmp,2));
+    num_gauss = (int)tmp;
+    __GAUSS_INFO__.clear();
+    __GAUSS_INFO__.resize(num_gauss);
+    for( int i=0; i<__GAUSS_INFO__.size(); i++ ){
+        fscanf(f, "%lf,", &tmp);
+        __GAUSS_INFO__[i].gain = tmp;
+        fscanf(f, "%lf,", &tmp);
+        __GAUSS_INFO__[i].mean = tmp;
+        fscanf(f, "%lf,", &tmp);
+        __GAUSS_INFO__[i].sigma_square = pow(tmp,2);
     }
-cout << "DONE" << endl;
+
     fclose(f);
 
 }
 
 
 
-
+void LS_model_get_ref(std::vector<SIGMA_INFO>* &sigma_info, std::vector<GAUSS_INFO>* &gauss_info )
+{
+    sigma_info = &__SIGMA_INFO__;
+    gauss_info = &__GAUSS_INFO__;
+}
 
 
 

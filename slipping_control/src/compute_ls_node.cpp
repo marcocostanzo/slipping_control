@@ -23,8 +23,12 @@
 #include "slipping_control_common/ContactForcesStamped.h"
 #include "slipping_control_common/LSStamped.h"
 #include "slipping_control_common/functions.h"
+#include "slipping_control_common/ChLSParams.h"
 //#include "Helper.h"
 //#include "slipping_control_common/SetMu.h"
+
+#define SIGMA_DEFAULT_VALUE 0.0
+#define SIGMA_MAX_VALUE 100.0
 
 #define HEADER_PRINT BOLDYELLOW "[" << ros::this_node::getName() << "] " CRESET 
 
@@ -38,6 +42,8 @@ ros::Publisher pubLS;
 
 //Params
 LS_INFO ls_info;
+std::vector<SIGMA_INFO>* sigma_info; //FT
+std::vector<GAUSS_INFO>* gauss_info; //TAUN
 
 //Cor_tilde
 double MAX_COR_TILDE;
@@ -46,6 +52,14 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
 
     //Sigma
     ls_msg.sigma = calculateSigma( msg->forces.ft, msg->forces.taun, ls_info );
+    if(isnan(ls_msg.sigma)){
+        ls_msg.sigma = SIGMA_DEFAULT_VALUE;
+    }
+    if(ls_msg.sigma>SIGMA_MAX_VALUE){
+        ls_msg.sigma = SIGMA_MAX_VALUE;
+    } else if(ls_msg.sigma<-SIGMA_MAX_VALUE){
+        ls_msg.sigma = -SIGMA_MAX_VALUE;
+    }
 
     //Extimate c_tilde
     bool b_max_iter;
@@ -70,20 +84,20 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
     //Saturation to avoid noise when cor_tilde->infinity
     if(ls_msg.cor_tilde > MAX_COR_TILDE){
         ls_msg.cor_tilde = MAX_COR_TILDE;
-    } else if(ls_msg.cor_tilde > -MAX_COR_TILDE){
+    } else if(ls_msg.cor_tilde < -MAX_COR_TILDE){
         ls_msg.cor_tilde = -MAX_COR_TILDE;
     }
 
     //Compute Normalized LS
-    ls_msg.ft_tilde_ls = ft_tilde_ls_model( ls_msg.cor_tilde, __SIGMA_INFO__ );
-    ls_msg.taun_tilde_ls = taun_tilde_ls_model( ls_msg.cor_tilde, __GAUSS_INFO__ );
+    ls_msg.ft_tilde_ls = ft_tilde_ls_model( ls_msg.cor_tilde, *sigma_info );
+    ls_msg.taun_tilde_ls = taun_tilde_ls_model( ls_msg.cor_tilde, *gauss_info );
 
     //Compute LS & Radius
     ls_msg.ft_ls = ls_msg.ft_tilde_ls*getMaxFt( msg->forces.fn , ls_info.mu );
     ls_msg.taun_ls = ls_msg.taun_tilde_ls*getMaxTaun( msg->forces.fn , ls_info, ls_msg.radius );
 
     //Compute COR
-    ls_msg.cor = ls_msg.radius*ls_msg.cor;
+    ls_msg.cor = ls_msg.radius*ls_msg.cor_tilde;
 
     //Compute Generalized Max Force (g of LuGre Model)
     ls_msg.generalized_max_force = fabs(ls_msg.taun_ls) + fabs( ls_msg.ft_ls * ls_msg.cor );
@@ -127,6 +141,30 @@ bool ch_mu_callbk(slipping_control_common::SetMu::Request  &req,
 }
 */
 
+bool set_params_service_callbk(slipping_control_common::ChLSParams::Request  &req, 
+   		 		                slipping_control_common::ChLSParams::Response &res)
+{
+
+    cout << HEADER_PRINT "Change LS parameters..." << endl;
+    if(req.delta >= 0.0){
+        ls_info.delta = req.delta;
+    }
+    if(req.gamma >= 0.0){
+        ls_info.gamma = req.gamma;
+    }
+    if(req.mu >= 0.0){
+        ls_info.mu = req.mu;
+    }
+    if(req.k > 0.0){
+        cout << HEADER_PRINT "Change k not supported" << endl;
+        //ls_info.k = req.k;
+    }
+    computeLSInfo(ls_info);
+
+    return true;
+
+}
+
 int main(int argc, char *argv[])
 {
     
@@ -143,7 +181,7 @@ int main(int argc, char *argv[])
     computeLSInfo(ls_info);
 
     //Cor_tilde
-    nh_private.param("max_cor_tilde" , MAX_COR_TILDE, 1.0 );
+    nh_private.param("max_cor_tilde" , MAX_COR_TILDE, 100.0 );
     MAX_COR_TILDE = fabs(MAX_COR_TILDE);
 
     //Sub
@@ -160,17 +198,14 @@ int main(int argc, char *argv[])
     //Pubs
     pubLS = nh_public.advertise<slipping_control_common::LSStamped>(ls_topic_str, 1);
 
-    //initLS_model(ls_info.k, ros::package::getPath("slipping_control_common") + "/LS_models/"); //<-- error in there is no file with that k
+    initLS_model(ls_info.k, ros::package::getPath("slipping_control_common") + "/LS_models/"); //<-- error in there is no file with that k
+    LS_model_get_ref(sigma_info, gauss_info);
 
-    //Server Mu
-    /*
-    string mu_server_str("");
-    nh_private.param("service_ch_mu" , mu_server_str, string("change_mu") );
-    ros::ServiceServer serviceChMu = nh_public.advertiseService(mu_server_str, ch_mu_callbk);
-    */
-
-    cout << __SIGMA_INFO__.num_sigm << endl;
-    cout << __GAUSS_INFO__.num_gauss << endl;
+    //Server Change parameters
+    string ch_params_server_str("");
+    nh_private.param("service_ch_params" , ch_params_server_str, string("ls_change_params") );
+    ros::ServiceServer serviceChMu = nh_public.advertiseService(ch_params_server_str, set_params_service_callbk);
+    
     
     ros::spin();
 

@@ -45,17 +45,15 @@ struct LS_INFO {
 };
 
 struct SIGMA_INFO {
-  unsigned int num_sigm;
-  std::vector<double> gain;
-  std::vector<double> exponent;
-  std::vector<double> mean;
+  double gain;
+  double exponent;
+  double mean;
 };
 
 struct GAUSS_INFO {
-  unsigned int num_gauss;
-  std::vector<double> gain;
-  std::vector<double> mean;
-  std::vector<double> sigma_square;
+  double gain;
+  double mean;
+  double sigma_square;
 };
 
 struct VEL_SYSTEM_INFO {
@@ -72,9 +70,6 @@ struct VEL_SYSTEM_INFO {
 };
 
 ANN* __ann_COR_R__;
-
-SIGMA_INFO __SIGMA_INFO__; //FT
-GAUSS_INFO __GAUSS_INFO__; //TAUN
 
 /*
   Update LS struct
@@ -173,7 +168,7 @@ double c_tilde_grad_J_zero(
 /*
   Model that aproximate the ft_tilde_ls integral
 */
-double ft_tilde_ls_model( double c_tilde, const SIGMA_INFO& info );
+double ft_tilde_ls_model( double c_tilde, const std::vector<SIGMA_INFO>& info );
 
 /*
   Base function for ft_model
@@ -183,7 +178,7 @@ double sigm_fun( double x, double gain, double exponent, double mean );
 /*
   Gradient of the Model that aproximate the ft_tilde_ls integral
 */
-double d_ft_tilde_ls_model( double c_tilde, const SIGMA_INFO& info );
+double d_ft_tilde_ls_model( double c_tilde, const std::vector<SIGMA_INFO>& info );
 
 /*
   Gradient of the Base function for ft_model
@@ -193,7 +188,7 @@ double d_sigm_fun( double x, double gain, double exponent, double mean );
 /*
   Model that aproximate the taun_tilde_ls integral
 */
-double taun_tilde_ls_model( double c_tilde, const GAUSS_INFO& info );
+double taun_tilde_ls_model( double c_tilde, const std::vector<GAUSS_INFO>& info );
 
 /*
   Base function for taun_model
@@ -203,7 +198,7 @@ double gauss_fun( double x, double gain, double mean, double sigma_square );
 /*
   Gradient of the Model that aproximate the taun_tilde_ls integral
 */
-double d_taun_tilde_ls_model( double c_tilde, const GAUSS_INFO& info );
+double d_taun_tilde_ls_model( double c_tilde, const std::vector<GAUSS_INFO>& info );
 
 /*
   Gradient of the Base function for ft_model
@@ -220,6 +215,11 @@ double getFn_ls( double ft, double taun, double ft_tilde_ls, double taun_tilde_l
   Initialize global variables for the Limit Surface model (gaussian and sigmoid)
 */
 void initLS_model( double k, const std::string& folder );
+
+/*
+  change the input pointers, they will refer tje sigma and gauss parameter for ft and tau.
+*/
+void LS_model_get_ref(std::vector<SIGMA_INFO>* &sigma_info, std::vector<GAUSS_INFO>* &gauss_info );
 
 
 double min_force_Jcst( 

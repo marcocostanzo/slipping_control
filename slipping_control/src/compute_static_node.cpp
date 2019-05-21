@@ -121,7 +121,7 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
         }
         
     } else {
-        Fn_min.data = secure_gain*msg->forces.ft/ls_info.mu_;
+        Fn_min.data = secure_gain*msg->forces.ft/ls_info.mu;
     }   
 
     pub_static.publish(Fn_min);
@@ -182,8 +182,8 @@ bool ch_mu_callbk(slipping_control_common::SetMu::Request  &req,
         return true;
     }
 
-    ls_info.mu_ = req.mu;
-    ls_info.alpha_ = computeAlpha( ls_info );
+    ls_info.mu = req.mu;
+    ls_info.alpha = computeAlpha( ls_info );
 
     cout << HEADER_PRINT << GREEN "Service Change mu OK " << endl;
 
@@ -200,10 +200,10 @@ int main(int argc, char *argv[]){
     nh_public = new ros::NodeHandle();
 
     //params
-    nh_private.param("beta" , ls_info.beta_, 0.002 );
-    nh_private.param("gamma" , ls_info.gamma_, 0.3333 );
-    nh_private.param("mu" , ls_info.mu_, 0.8 );
-    ls_info.alpha_ = computeAlpha( ls_info );
+    nh_private.param("beta" , ls_info.delta, 0.002 );
+    nh_private.param("gamma" , ls_info.gamma, 0.3333 );
+    nh_private.param("mu" , ls_info.mu, 0.8 );
+    ls_info.alpha = computeAlpha( ls_info );
     bool line_approx;
     nh_private.param("line_approx" , line_approx, false );
     if(line_approx){
@@ -250,7 +250,7 @@ int main(int argc, char *argv[]){
     ros::ServiceServer servicePause = nh_public->advertiseService(pause_service, pause_callbk);
 
     ros::ServiceServer serviceRotation = nh_public->advertiseService(control_rotation_str, rotation_callbk);
-sleep(1); cout << "mu=" << ls_info.mu_ << "secure gain = " << secure_gain << "line_approx" << (line_approx ? "true" : "false") << endl;
+sleep(1); cout << "mu=" << ls_info.mu << "secure gain = " << secure_gain << "line_approx" << (line_approx ? "true" : "false") << endl;
 
         //Server Mu
     string mu_server_str("");

@@ -50,31 +50,13 @@ actionlib_msgs
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   ContactForces.msg
-   ContactForcesStamped.msg
-   VirtualCOR.msg
-   VirtualCORStamped.msg
-   MaxForces.msg
-   MaxForcesStamped.msg
- )
+ add_message_files(DIRECTORY msg)
 
 ## Generate services in the 'srv' folder
- add_service_files(
-   FILES
-   FnsParams.srv
-   Grasp.srv
-   Pivoting.srv
-   SetMu.srv
- )
+ add_service_files(DIRECTORY srv)
 
 ## Generate actions in the 'action' folder
- add_action_files(
-   FILES
-   Grasping.action
-   Pivoting.action
- )
+ add_action_files(DIRECTORY action)
 
 ## Generate added messages and services with any dependencies listed here
  generate_messages(
@@ -115,7 +97,13 @@ actionlib_msgs
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS message_runtime std_msgs robotics_toolbox_ros roslib sun_learning_lib actionlib_msgs
+  CATKIN_DEPENDS 
+  message_runtime 
+  std_msgs 
+  robotics_toolbox_ros 
+  roslib 
+  sun_learning_lib 
+  actionlib_msgs
 #  DEPENDS system_lib
 )
 

@@ -1,7 +1,7 @@
 /*
     Node that compute the LimitSurface informations
 
-    Copyright 2018 Università della Campania Luigi Vanvitelli
+    Copyright 2018-2019 Università della Campania Luigi Vanvitelli
 
     Author: Marco Costanzo <marco.costanzo@unicampania.it>
 
@@ -21,175 +21,90 @@
 
 #include "ros/ros.h"
 #include "slipping_control_common/ContactForcesStamped.h"
-#include "slipping_control_common/VirtualCORStamped.h"
-#include "slipping_control_common/MaxForcesStamped.h"
-#include "std_msgs/Float64.h"
-#include "std_msgs/Float64MultiArray.h"
+#include "slipping_control_common/LSStamped.h"
 #include "slipping_control_common/functions.h"
-#include "Helper.h"
-#include "learn_algs/learn_algs.h"
-#include "slipping_control_common/SetMu.h"
+//#include "Helper.h"
+//#include "slipping_control_common/SetMu.h"
 
-#define HEADER_PRINT BOLDYELLOW "[Compute LS]: " CRESET 
+#define HEADER_PRINT BOLDYELLOW "[" << ros::this_node::getName() << "] " CRESET 
 
-using namespace TooN;
 using namespace std;
 
-slipping_control_common::VirtualCORStamped cor_msg;
-slipping_control_common::MaxForcesStamped max_forces_msg;
-std_msgs::Float64 Generalized_force;
-std_msgs::Float64 Fn_min;
-std_msgs::Float64MultiArray msg_dbg;
+//Msgs
+slipping_control_common::LSStamped ls_msg;
 
-ros::Publisher pubCOR;
-ros::Publisher pubMinForce;
-ros::Publisher pubMaxForce;
-ros::Publisher pubGenerForce;
-ros::Publisher pubDebug;
-
-//TRIGGER FCN
-double trigger_fcn( double x_k, double & s_k, double DELTA ){
-
-    if(s_k > 0.0 && x_k < -DELTA ){
-        s_k = -1.0;
-    } else if( s_k < 0.0 && x_k > DELTA ){
-        s_k = 1.0;
-    }
-
-    if( fabs(x_k) > DELTA ){
-        return x_k;
-    } else{
-        return DELTA * s_k;
-    }
-
-}
+//Publishers
+ros::Publisher pubLS;
 
 //Params
 LS_INFO ls_info;
-double sign_correction;
-
-//Trigger
-//bool taun_trigger_state = true;
-double taun_trigger_state = -1.0;
-double TAUN_MIN, TAUN_MAX, TAUN_WHEN_TRIGGER_ACTIVE;
-
-bool schmitt_taun_trigger_state = true;
 
 //Cor_tilde
-double MAX_SIGMA, MAX_COR_TILDE; //max sigma should be a param of function cor_tilde
-
-//FindZero -> Fn_min
-double GD_GAIN, GD_COST_TOL, FIND_ZERO_LAMBDA;
-int MAX_GD_ITER;
-double DEFAULT_MIN_FN;
-
-//Secure vars
-double MIN_FN_MIN;
-
-double taun_no_filter = 0.0, ft_no_filter = 0.0, fn_no_filter = 0.0;
-
-void contact_force_no_filter_Callback (const slipping_control_common::ContactForcesStamped::ConstPtr& msg) {
-    taun_no_filter = msg->forces.taun;
-    ft_no_filter = msg->forces.ft;
-    fn_no_filter = msg->forces.ft;
-}
+double MAX_COR_TILDE;
 
 void contact_force_Callback (const slipping_control_common::ContactForcesStamped::ConstPtr& msg) {
 
-    //save segn_tau
-    double segn_tau = 1.0;
-    if(msg->forces.taun < 0.0)
-        segn_tau = -1.0;
+    //Sigma
+    ls_msg.sigma = calculateSigma( msg->forces.ft, msg->forces.taun, ls_info );
 
-    double tau_abs = fabs(msg->forces.taun);
-
-
-    //cor_msg.cor.sigma = calculateSigma( msg->forces.ft, tau_abs, ls_info );
-    cor_msg.cor.sigma = calculateSigma( msg->forces.ft, 
-                                        SchmittTrigger( 
-                                                        tau_abs, 
-                                                        schmitt_taun_trigger_state, 
-                                                        0.002, 
-                                                        0.005, 
-                                                        0.0 
-                                                        ), 
-                                        ls_info );
-
-    cor_msg.cor.virtual_cor_tilde = computeCOR_R(cor_msg.cor.sigma, MAX_SIGMA);
-    if(cor_msg.cor.virtual_cor_tilde > MAX_COR_TILDE){
-        cor_msg.cor.virtual_cor_tilde = MAX_COR_TILDE;
-    }
-
-    //Calc min Fn
+    //Extimate c_tilde
     bool b_max_iter;
-    double initial_point;
-    if(msg->forces.fn == 0.0){
-        initial_point = DEFAULT_MIN_FN;
+    double virtual_cor_tilde_tmp = computeCOR_tilde(    
+                        ls_msg.sigma, 
+                        ls_info.gamma,
+                        b_max_iter, 
+                        ls_msg.cor_tilde
+                        /*double MAX_SIGMA = 30.0, 
+                        double GD_GAIN = 1.0, 
+                        double GD_COST_TOL = 1.0E-6, 
+                        double FIND_ZERO_LAMBDA = 1.0E-10,
+                        int MAX_GD_ITER = 150*/
+                        );
+    if( isnan(ls_msg.cor_tilde) || b_max_iter ){
+        //FindZero not converged
+        //Decision -> do not update virtual_cor_tilde
     } else{
-        initial_point = msg->forces.fn;
+        //FindZero Converged
+        ls_msg.cor_tilde = virtual_cor_tilde_tmp;
     }
-    double x = findZero(    initial_point,
-                            boost::bind(min_force_Jcst, 
-                                        _1, 
-                                        limitSurface_true,
-                                        msg->forces.ft,
-                                        tau_abs,
-                                        ls_info
-                                        ), 
-                            boost::bind(min_force_gradJ, 
-                                        _1, 
-                                        diff_limitSurface_true,
-                                        msg->forces.ft,
-                                        tau_abs,
-                                        ls_info
-                                        ), 
-                            GD_GAIN, 
-                            GD_COST_TOL, 
-                            FIND_ZERO_LAMBDA, 
-                            MAX_GD_ITER, 
-                            b_max_iter );
-
-    if( !isnan(x) && x!=0.0 && !b_max_iter ){
-        Fn_min.data = fabs(x);
-    }
-    if(Fn_min.data < MIN_FN_MIN){
-        Fn_min.data = MIN_FN_MIN;
+    //Saturation to avoid noise when cor_tilde->infinity
+    if(ls_msg.cor_tilde > MAX_COR_TILDE){
+        ls_msg.cor_tilde = MAX_COR_TILDE;
+    } else if(ls_msg.cor_tilde > -MAX_COR_TILDE){
+        ls_msg.cor_tilde = -MAX_COR_TILDE;
     }
 
-    cor_msg.cor.virtual_radius = ls_info.beta_ * pow(Fn_min.data, ls_info.gamma_ );
-    cor_msg.cor.virtual_cor = -segn_tau* cor_msg.cor.virtual_cor_tilde * cor_msg.cor.virtual_radius;
+    //Compute Normalized LS
+    ls_msg.ft_tilde_ls = ft_tilde_ls_model( ls_msg.cor_tilde, __SIGMA_INFO__ );
+    ls_msg.taun_tilde_ls = taun_tilde_ls_model( ls_msg.cor_tilde, __GAUSS_INFO__ );
 
-    max_forces_msg.forces.force_frac = msg->forces.fn/Fn_min.data;
-    max_forces_msg.forces.ft_max = msg->forces.ft * max_forces_msg.forces.force_frac;
-    max_forces_msg.forces.taun_max = tau_abs * pow( max_forces_msg.forces.force_frac , ls_info.gamma_+1.0 );
+    //Compute LS & Radius
+    ls_msg.ft_ls = ls_msg.ft_tilde_ls*getMaxFt( msg->forces.fn , ls_info.mu );
+    ls_msg.taun_ls = ls_msg.taun_tilde_ls*getMaxTaun( msg->forces.fn , ls_info, ls_msg.radius );
 
-    max_forces_msg.forces.generalized_max_force = max_forces_msg.forces.taun_max + max_forces_msg.forces.ft_max * fabs(cor_msg.cor.virtual_cor);
+    //Compute COR
+    ls_msg.cor = ls_msg.radius*ls_msg.cor;
 
-    Generalized_force.data = sign_correction*( segn_tau*fabs(taun_no_filter) - ft_no_filter * cor_msg.cor.virtual_cor);
+    //Compute Generalized Max Force (g of LuGre Model)
+    ls_msg.generalized_max_force = fabs(ls_msg.taun_ls) + fabs( ls_msg.ft_ls * ls_msg.cor );
 
-    //Fill headers
-    cor_msg.header = msg->header;
-    max_forces_msg.header = msg->header;
+    //Compute Generalized Force
+    ls_msg.generalized_force = msg->forces.taun - ls_msg.cor*msg->forces.ft;
+
+    //Compute fn_ls
+    ls_msg.fn_ls = getFn_ls( msg->forces.ft, msg->forces.taun, ls_msg.ft_tilde_ls, ls_msg.taun_tilde_ls, ls_info );
+    //Compute fn_ls_free_pivot
+    ls_msg.fn_ls_free_pivot = getFn_ls( msg->forces.ft, msg->forces.taun, 1.0, 0.0, ls_info );
+
+    //Fill header
+    ls_msg.header = msg->header;
 
     //PUB
-    pubCOR.publish(cor_msg);
-    pubMinForce.publish(Fn_min);
-    pubMaxForce.publish(max_forces_msg);
-    pubGenerForce.publish(Generalized_force);
-
-    //DBG
-    msg_dbg.data[0] = msg->forces.fn;
-    msg_dbg.data[1] = msg->forces.ft;
-    msg_dbg.data[2] = msg->forces.taun;
-    msg_dbg.data[3] = Fn_min.data;
-    msg_dbg.data[4] = max_forces_msg.forces.ft_max;
-    msg_dbg.data[5] = max_forces_msg.forces.taun_max;
-    msg_dbg.data[6] = ros::Time::now().toSec();
-
-    pubDebug.publish(msg_dbg);
+    pubLS.publish(ls_msg);
 
 }
 
+/*
 bool ch_mu_callbk(slipping_control_common::SetMu::Request  &req, 
    		 		slipping_control_common::SetMu::Response &res){
 
@@ -210,6 +125,7 @@ bool ch_mu_callbk(slipping_control_common::SetMu::Request  &req,
 	return true;
 
 }
+*/
 
 int main(int argc, char *argv[])
 {
@@ -219,71 +135,42 @@ int main(int argc, char *argv[])
     ros::NodeHandle nh_private("~");
     ros::NodeHandle nh_public;
 
-    //sing_correction
-    nh_private.param("sign_correction" , sign_correction, 1.0 );
-    taun_trigger_state = -sign_correction;
-
     //params
-    nh_private.param("beta" , ls_info.beta_, 0.002 );
-    nh_private.param("gamma" , ls_info.gamma_, 0.3333 );
-    nh_private.param("mu" , ls_info.mu_, 0.8 );
-    ls_info.alpha_ = computeAlpha( ls_info );
-
-    //Trigger
-    nh_private.param("trigger_taun_min" , TAUN_MIN, 0.002 );
-    nh_private.param("trigger_taun_max" , TAUN_MAX, 0.010 );
-    nh_private.param("trigger_taun_when_trigger_active" , TAUN_WHEN_TRIGGER_ACTIVE, TAUN_MIN );
+    nh_private.param("delta" , ls_info.delta, 0.002 );
+    nh_private.param("gamma" , ls_info.gamma, 0.3333 );
+    nh_private.param("mu" , ls_info.mu, 0.8 );
+    nh_private.param("k" , ls_info.k, 4.0 );
+    computeLSInfo(ls_info);
 
     //Cor_tilde
-    nh_private.param("max_sigma" , MAX_SIGMA, 30.0 );
     nh_private.param("max_cor_tilde" , MAX_COR_TILDE, 1.0 );
-
-    //FindZero -> Fn_min
-    nh_private.param("default_fn_min" , DEFAULT_MIN_FN, 20.0 );
-    nh_private.param("newton_gain" , GD_GAIN, 1.0 );
-    nh_private.param("newton_cost_tol" , GD_COST_TOL, 1.0E-6 );
-    nh_private.param("newton_lambda" , FIND_ZERO_LAMBDA, 1.0E-10 );
-    nh_private.param("newton_max_iter" , MAX_GD_ITER, 150 );
-
-    //Secure vars
-    nh_private.param("min_fn_min" , MIN_FN_MIN, 2.0 );
+    MAX_COR_TILDE = fabs(MAX_COR_TILDE);
 
     //Sub
     string contact_force_topic_str("");
     nh_private.param("contact_force_topic" , contact_force_topic_str, string("contact_force") );
-    string contact_force_no_filter_topic_str("");
-    nh_private.param("contact_force_no_filter_topic" , contact_force_no_filter_topic_str, string("contact_force/filter") );
 
     //Pubs
-    string cor_topic_str("");
-    nh_private.param("cor_topic" , cor_topic_str, string("cor") );
-    string min_force_topic_str("");
-    nh_private.param("min_force_topic" , min_force_topic_str, string("min_force") );
-    string max_force_topic_str("");
-    nh_private.param("max_force_topic" , max_force_topic_str, string("max_force") );
-    string gen_force_topic_str("");
-    nh_private.param("generalized_force_topic" , gen_force_topic_str, string("generalized_force") );
+    string ls_topic_str("");
+    nh_private.param("ls_topic" , ls_topic_str, string("ls") );
 
     //Subs
     ros::Subscriber subContact = nh_public.subscribe( contact_force_topic_str, 1, contact_force_Callback);
-    ros::Subscriber subContactNoFilter = nh_public.subscribe( contact_force_no_filter_topic_str, 1, contact_force_no_filter_Callback);
 
     //Pubs
-    pubCOR = nh_public.advertise<slipping_control_common::VirtualCORStamped>(cor_topic_str, 1);
-    pubMinForce = nh_public.advertise<std_msgs::Float64>(min_force_topic_str, 1);
-    pubMaxForce = nh_public.advertise<slipping_control_common::MaxForcesStamped>(max_force_topic_str, 1);
-    pubGenerForce = nh_public.advertise<std_msgs::Float64>(gen_force_topic_str, 1);
+    pubLS = nh_public.advertise<slipping_control_common::LSStamped>(ls_topic_str, 1);
 
-    //DEBUG
-    pubDebug = nh_public.advertise<std_msgs::Float64MultiArray>("debug_LS", 1);
-    msg_dbg.data.resize(7);
-
-    initANN_COR_R();
+    //initLS_model(ls_info.k, ros::package::getPath("slipping_control_common") + "/LS_models/"); //<-- error in there is no file with that k
 
     //Server Mu
+    /*
     string mu_server_str("");
     nh_private.param("service_ch_mu" , mu_server_str, string("change_mu") );
     ros::ServiceServer serviceChMu = nh_public.advertiseService(mu_server_str, ch_mu_callbk);
+    */
+
+    cout << __SIGMA_INFO__.num_sigm << endl;
+    cout << __GAUSS_INFO__.num_gauss << endl;
     
     ros::spin();
 

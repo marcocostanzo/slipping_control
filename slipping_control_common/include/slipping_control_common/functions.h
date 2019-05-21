@@ -23,15 +23,39 @@
 #define _SLIPPING_CONTROL_COMMON_FUNCTIONS_
 
 #include "GeometryHelper.h"
+#include "learn_algs/learn_algs.h"
 #include "ANN/ANN.h"
 #include "ros/package.h"
 #include "boost/function.hpp"
+#include <boost/bind.hpp>
+#include <boost/algorithm/string.hpp>
+#include <iomanip>
+
+#define INIT_LS_MODEL_FILE_NAME_DIGIT_PRECISION 2
+
+#define MODEL_FILE_EXT ".txt"
 
 struct LS_INFO {
-  double mu_;
-  double alpha_;
-  double gamma_;
-  double beta_;
+  double mu;
+  double k;
+  double gamma;
+  double delta;
+  double xik_nuk;
+  double alpha; //Deprecated
+};
+
+struct SIGMA_INFO {
+  unsigned int num_sigm;
+  std::vector<double> gain;
+  std::vector<double> exponent;
+  std::vector<double> mean;
+};
+
+struct GAUSS_INFO {
+  unsigned int num_gauss;
+  std::vector<double> gain;
+  std::vector<double> mean;
+  std::vector<double> sigma_square;
 };
 
 struct VEL_SYSTEM_INFO {
@@ -49,13 +73,162 @@ struct VEL_SYSTEM_INFO {
 
 ANN* __ann_COR_R__;
 
+SIGMA_INFO __SIGMA_INFO__; //FT
+GAUSS_INFO __GAUSS_INFO__; //TAUN
+
+/*
+  Update LS struct
+*/
+void computeLSInfo(LS_INFO& ls_info);
+
+/*
+ Compute the product Xik*Nuk using gamma functions
+*/
+double getXikNuk(double k);
+
+/*
+  Deprecated
+  Compute alpha 2*mu*xik*nuk*delta
+*/
 double computeAlpha( const LS_INFO& ls_info );
 
+/*
+  Compute sigma from non-normalized forces
+  2*xik*nuk*delta/(mu^gamma) * (ft^(gamma+1))/taun
+  N.B. the pow is signed
+*/
 double calculateSigma( double ft, double taun, const LS_INFO& info );
 
-double computeCOR_R(double sigma_, double MAX_SIGMA);
+/*
+  Compute sigma from normalized forces
+  (ft_tilde^(gamma+1))/taun_tilde
+  N.B. the pow is signed
+*/
+double calculateSigma( double ft_tilde, double taun_tilde, double gamma );
 
-double min_force_Jcst( double fn, const boost::function<double(double)>& limitSurface, double ft, double taun ,const LS_INFO& info );
+/*
+  Compute maximum tangential force
+  ft = mu*fn
+*/
+double getMaxFt( double fn, double mu );
+
+/*
+  Compute simultaneously the maximum normal torque and the radius of the contact area
+*/
+double getMaxTaun( double fn , const LS_INFO& info, double& radius );
+
+/*
+  Compute the maximum normal torque
+*/
+double getMaxTaun( double fn , const LS_INFO& info );
+
+/*
+  Compute the radius
+*/
+double getRadius( double fn , const LS_INFO& info );
+
+/*
+  Compute cor_tilde, this function invert the c_tilde->sigma function
+  this use a Newton method
+  b_max_iter is an output. It is true if MAX_GD_ITER is expired.
+  If b_max_iter=true or if it returns NaN, the algorithm not converged for some reason.
+*/
+double computeCOR_tilde(    
+                        double sigma, 
+                        double gamma,
+                        bool& b_max_iter, 
+                        double initial_point = 1.0,
+                        double MAX_SIGMA = 30.0, 
+                        double GD_GAIN = 1.0, 
+                        double GD_COST_TOL = 1.0E-6, 
+                        double FIND_ZERO_LAMBDA = 1.0E-10,
+                        int MAX_GD_ITER = 150
+                        );
+
+/*
+  Function to use into FindZero for computeCOR_tilde
+*/
+double c_tilde_J_zero(  
+                        double c_tilde, 
+                        double sigma,
+                        double gamma, 
+                        const boost::function<double(double)>& ft_tilde_ls_model_fcn,  
+                        const boost::function<double(double)>& taun_tilde_ls_model_fcn 
+                      );
+
+/*
+  Gradient Function to use into FindZero for computeCOR_tilde
+*/
+double c_tilde_grad_J_zero(  
+                        double c_tilde, 
+                        double sigma,
+                        double gamma, 
+                        const boost::function<double(double)>& ft_tilde_ls_model_fcn,
+                        const boost::function<double(double)>& d_ft_tilde_ls_model_fcn,  
+                        const boost::function<double(double)>& taun_tilde_ls_model_fcn,
+                        const boost::function<double(double)>& d_taun_tilde_ls_model_fcn 
+                      );
+
+
+/*
+  Model that aproximate the ft_tilde_ls integral
+*/
+double ft_tilde_ls_model( double c_tilde, const SIGMA_INFO& info );
+
+/*
+  Base function for ft_model
+*/
+double sigm_fun( double x, double gain, double exponent, double mean );
+
+/*
+  Gradient of the Model that aproximate the ft_tilde_ls integral
+*/
+double d_ft_tilde_ls_model( double c_tilde, const SIGMA_INFO& info );
+
+/*
+  Gradient of the Base function for ft_model
+*/
+double d_sigm_fun( double x, double gain, double exponent, double mean );
+
+/*
+  Model that aproximate the taun_tilde_ls integral
+*/
+double taun_tilde_ls_model( double c_tilde, const GAUSS_INFO& info );
+
+/*
+  Base function for taun_model
+*/
+double gauss_fun( double x, double gain, double mean, double sigma_square );
+
+/*
+  Gradient of the Model that aproximate the taun_tilde_ls integral
+*/
+double d_taun_tilde_ls_model( double c_tilde, const GAUSS_INFO& info );
+
+/*
+  Gradient of the Base function for ft_model
+*/
+double d_gauss_fun( double x, double gain, double mean, double sigma_square );
+
+/*
+  Compute Fn_ls,
+  This fcn uses the most (numerically) roboust way
+*/
+double getFn_ls( double ft, double taun, double ft_tilde_ls, double taun_tilde_ls, const LS_INFO& info );
+
+/*
+  Initialize global variables for the Limit Surface model (gaussian and sigmoid)
+*/
+void initLS_model( double k, const std::string& folder );
+
+
+double min_force_Jcst( 
+                      double fn, 
+                      const boost::function<double(double)>& limitSurface, 
+                      double ft, 
+                      double taun,
+                      const LS_INFO& info
+                      );
 
 double min_force_gradJ( double fn, const boost::function<double(double)>& diff_limitSurface, double ft, double taun ,const LS_INFO& info  );
 

@@ -67,9 +67,14 @@ double integrator_dc_gain;
 double p_gain;
 double input_data;
 TF_FIRST_ORDER_FILTER* tf_pseudo_integrator;
+bool running = false;
 
 std_msgs::Float64 fnd;
 void readInput_and_pub(const std_msgs::Float64::ConstPtr& msg){
+
+    if(!running){
+        return;
+    }
 
     fnd.data = fabs(msg->data * p_gain);
 
@@ -83,7 +88,6 @@ void readInput(const std_msgs::Float64::ConstPtr& msg){
 }
 
 /*Pause callback*/
-bool running = false;
 bool setRunning_callbk(std_srvs::SetBool::Request  &req, 
    		 		std_srvs::SetBool::Response &res){
 

@@ -131,12 +131,12 @@ int main(int argc, char *argv[]){
     string set_running_service_str("");
     nh_private.param("set_running_service" , set_running_service_str, string("set_running") );
 
-    nh_private.param("i_gain" , i_gain, 20.0 );
-    nh_private.param("p_gain" , p_gain, 20.0 );
-    nh_private.param("integrator_dc_gain" , integrator_dc_gain, 1E2 );
+    nh_private.param("i_gain" , i_gain, 50.0 );
+    nh_private.param("p_gain" , p_gain, 13.0 );
+    nh_private.param("integrator_dc_gain" , integrator_dc_gain, 35.0 );
 
     double Hz;
-    nh_private.param("hz" , Hz, 500.0 );
+    nh_private.param("hz" , Hz, 2000.0 );
     double Ts = 1.0/Hz;
 
 	// Publisher

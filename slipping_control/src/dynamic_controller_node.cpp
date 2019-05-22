@@ -1,7 +1,7 @@
 /*
     ROS node to calculate the dynamic contribution
 
-    Copyright 2018 Università della Campania Luigi Vanvitelli
+    Copyright 2018-2019 Università della Campania Luigi Vanvitelli
 
     Author: Marco Costanzo <marco.costanzo@unicampania.it>
 
@@ -23,9 +23,34 @@
 
 #include <std_msgs/Float64.h>
 #include "std_srvs/SetBool.h"
-#include "Helper.h"
 
 #include <TF_SISO/TF_FIRST_ORDER_FILTER.h>
+
+#ifndef SUN_COLORS
+#define SUN_COLORS
+
+/* ======= COLORS ========= */
+#define CRESET   "\033[0m"
+#define BLACK   "\033[30m"      /* Black */
+#define RED     "\033[31m"      /* Red */
+#define GREEN   "\033[32m"      /* Green */
+#define YELLOW  "\033[33m"      /* Yellow */
+#define BLUE    "\033[34m"      /* Blue */
+#define MAGENTA "\033[35m"      /* Magenta */
+#define CYAN    "\033[36m"      /* Cyan */
+#define WHITE   "\033[37m"      /* White */
+#define BOLD    "\033[1m"       /* Bold */
+#define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
+#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
+#define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
+#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
+#define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
+#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
+#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
+#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+/*===============================*/
+
+#endif
 
 #define HEADER_PRINT BOLDYELLOW "[Dynamic Controller]: " CRESET
 
@@ -34,13 +59,11 @@ using namespace std;
 ros::Publisher outPub;
 ros::Subscriber in_sub;
 
-ros::ServiceClient client_pause_kf;
-
 string in_topic("");
 string out_topic("");
 
-double i_gain = 0.0;
-double integrator_dc_gain = 1E2;
+double i_gain;
+double integrator_dc_gain;
 double p_gain;
 double input_data;
 TF_FIRST_ORDER_FILTER* tf_pseudo_integrator;
@@ -60,40 +83,33 @@ void readInput(const std_msgs::Float64::ConstPtr& msg){
 }
 
 /*Pause callback*/
-bool paused = true;
-bool pause_callbk(std_srvs::SetBool::Request  &req, 
+bool running = false;
+bool setRunning_callbk(std_srvs::SetBool::Request  &req, 
    		 		std_srvs::SetBool::Response &res){
 
-    std_srvs::SetBool setBoolmsg;
-   	setBoolmsg.request.data = req.data;
-    bool b_kf = client_pause_kf.call(setBoolmsg);
-
-    if(!b_kf || !setBoolmsg.response.success ){
-        cout <<  HEADER_PRINT RED << "Filed to " << BOLDRED << ( req.data ? "STOP" : "START" ) << CRESET RED << " Kalman Filter!" << CRESET << endl;
-    }
-
     if(req.data){
+
+        if(!running){
+            input_data = 0.0;
+            fnd.data = 0.0;
+            if(i_gain!=0.0){
+                tf_pseudo_integrator->reset(); 
+            }
+            cout << HEADER_PRINT GREEN "STARTED!" CRESET << endl;
+        }
+        running = true;
+
+    } else{
 
         if(i_gain!=0.0){
            tf_pseudo_integrator->reset(); 
         }
 
         fnd.data = 0.0;
-        paused = true;
+        running = false;
         outPub.publish(fnd);
 
-        cout << HEADER_PRINT YELLOW "PAUSED!" CRESET << endl;
-
-    } else {
-
-        if(paused){
-            if(i_gain!=0.0){
-                tf_pseudo_integrator->reset(); 
-            }
-            cout << HEADER_PRINT GREEN "STARTED!" CRESET << endl;
-        }
-
-        paused = false;
+        cout << HEADER_PRINT YELLOW "Stopped!" CRESET << endl;
 
     }
 
@@ -112,10 +128,8 @@ int main(int argc, char *argv[]){
     
     nh_private.param("out_topic" , out_topic, string("dyn_force") );
 
-    string pause_service("");
-    nh_private.param("pause_service" , pause_service, string("pause") );
-    string pause_kf_service("");
-    nh_private.param("pause_kf_service" , pause_kf_service, string("pause") );
+    string set_running_service_str("");
+    nh_private.param("set_running_service" , set_running_service_str, string("set_running") );
 
     nh_private.param("i_gain" , i_gain, 20.0 );
     nh_private.param("p_gain" , p_gain, 20.0 );
@@ -135,9 +149,7 @@ int main(int argc, char *argv[]){
 
 	outPub = nh_public.advertise<std_msgs::Float64>( out_topic,1);
 
-    ros::ServiceServer servicePause = nh_public.advertiseService(pause_service, pause_callbk);
-
-    client_pause_kf = nh_public.serviceClient<std_srvs::SetBool>(pause_kf_service);
+    ros::ServiceServer serviceSetRunning = nh_public.advertiseService(set_running_service_str, setRunning_callbk);
 
     if(i_gain!=0.0){
 
@@ -146,12 +158,12 @@ int main(int argc, char *argv[]){
         while(ros::ok()){
 
             ros::spinOnce();
-            if(paused){
+            if(!running){
                 loop_rate.sleep();
                 continue;
             }
             
-            //Apply control
+            //Apply control  ---> fabs(i+p)  or fabs(i)+fabs(p) ?
             fnd.data = fabs( tf_pseudo_integrator->apply(input_data) + p_gain * input_data );          
             
             outPub.publish(fnd);

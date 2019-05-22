@@ -23,6 +23,12 @@
 
 #include "std_msgs/Int8.h"
 #include "slipping_control_common/ContactForcesStamped.h"
+#include "Helper.h"
+
+#define SIGN_FIX_TAUN_TRIGGER 0.005
+#define SCHMITT_TRIGGER_MIN 0.005
+#define SCHMITT_TRIGGER_MAX 0.010
+#define SCHMITT_TRIGGER_OUT_WHEN_ACTIVE 0.002
 
 using namespace std;
 
@@ -51,8 +57,9 @@ ros::Publisher pubSign;
 double segn_tau0 = -1.0;
 double segn_tau1 = -1.0;
 double segn_tau = -1.0;
+bool schmitt_t_tau0_state = true;
+bool schmitt_t_tau1_state = true;
 double tau0_abs = 0.0, tau1_abs = 0.0;
-double TAUN_TRIGGER = 0.005;
 
 std_msgs::Int8 sign_msg;
 void wrench0CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
@@ -60,7 +67,7 @@ void wrench0CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
     tau0_abs = fabs(msg->forces.taun);
 
     /*double taun_triggered =*/ 
-    trigger_fcn( msg->forces.taun, segn_tau0, TAUN_TRIGGER );
+    trigger_fcn( msg->forces.taun, segn_tau0, SIGN_FIX_TAUN_TRIGGER );
 
     if(tau0_abs >= tau1_abs)
         segn_tau = segn_tau0;
@@ -71,7 +78,15 @@ void wrench0CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
     if(segn_tau0 == segn_tau1 && (tau0_abs - tau1_abs) < 0.002 )
         segn_tau = segn_tau0;
 
-    msg->forces.taun = segn_tau*tau0_abs;
+    double tau0_abs_triggered = SchmittTrigger( 
+                                                tau0_abs, 
+                                                schmitt_t_tau0_state, 
+                                                SCHMITT_TRIGGER_MIN,
+                                                SCHMITT_TRIGGER_MAX,
+                                                SCHMITT_TRIGGER_OUT_WHEN_ACTIVE
+                                                );
+
+    msg->forces.taun = segn_tau*tau0_abs_triggered;
 
     sign_msg.data = segn_tau;
 
@@ -85,9 +100,17 @@ void wrench1CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
     tau1_abs = fabs(msg->forces.taun);
 
     /*double taun_triggered =*/ 
-    trigger_fcn( msg->forces.taun, segn_tau1, TAUN_TRIGGER );
+    trigger_fcn( msg->forces.taun, segn_tau1, SIGN_FIX_TAUN_TRIGGER );
 
-    msg->forces.taun = -segn_tau*tau1_abs;
+    double tau1_abs_triggered = SchmittTrigger( 
+                                                tau1_abs, 
+                                                schmitt_t_tau1_state, 
+                                                SCHMITT_TRIGGER_MIN,
+                                                SCHMITT_TRIGGER_MAX, 
+                                                SCHMITT_TRIGGER_OUT_WHEN_ACTIVE
+                                                );
+
+    msg->forces.taun = -segn_tau*tau1_abs_triggered;
 
     pubContact1.publish( msg );
 
@@ -101,8 +124,6 @@ int main(int argc, char *argv[])
     ros::NodeHandle nh_private("~");
     ros::NodeHandle nh_public;
 
-    nh_private.param("taun_trigger" , TAUN_TRIGGER, 0.005 );
-
     string input_topic0_str;
     nh_private.param("input_topic0" , input_topic0_str, string("contact0/raw") );
     string input_topic1_str;
@@ -112,16 +133,12 @@ int main(int argc, char *argv[])
     nh_private.param("output_topic0" , output_topic0_str, string("contact0/fix") );
     string output_topic1_str;
     nh_private.param("output_topic1" , output_topic1_str, string("contact1/fix") );
-    string output_sign_topic_str;
-    nh_private.param("output_sign_topic" , output_sign_topic_str, string("sign") );
 
     ros::Subscriber subContact0 = nh_public.subscribe( input_topic0_str, 1, wrench0CB);
     ros::Subscriber subContact1 = nh_public.subscribe( input_topic1_str, 1, wrench1CB);
 
     pubContact0 = nh_public.advertise<slipping_control_common::ContactForcesStamped>(output_topic0_str, 1);
     pubContact1 = nh_public.advertise<slipping_control_common::ContactForcesStamped>(output_topic1_str, 1);
-
-    pubSign = nh_public.advertise<std_msgs::Int8>(output_sign_topic_str, 1);
     
     ros::spin();
 

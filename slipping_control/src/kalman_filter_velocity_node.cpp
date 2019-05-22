@@ -240,6 +240,7 @@ void setInitialConditions(){
     
     kf->reset();
     kf->set_state( makeVector( 0.0, y_kf[0]/ss_info.sigma_02, y_kf[0]/ss_info.sigma_03 ) ) ;
+    kf->setPrecInput( input_vector );
 
 }
 

@@ -1,7 +1,7 @@
 /*
     ROS node to combine two static components of normal force (slipping avoidance)
 
-    Copyright 2018 Università della Campania Luigi Vanvitelli
+    Copyright 2018-2019 Università della Campania Luigi Vanvitelli
 
     Author: Marco Costanzo <marco.costanzo@unicampania.it>
 
@@ -21,11 +21,9 @@
 
 #include "ros/ros.h"
 
-#include <std_msgs/Float64.h>
-#include "std_srvs/SetBool.h"
-#include "slipping_control_common/FnsParams.h"
+#include "slipping_control_common/LSStamped.h"
+#include "slipping_control_common/LSCombinedStamped.h"
 
-#include "Helper.h"
 
 
 #define HEADER_PRINT BOLDYELLOW "[Static Combine]: " CRESET 
@@ -33,6 +31,11 @@
 using namespace std;
 
 /*PARAMS*/
+
+//Messages
+slipping_control_common::LSStamped in_msg0;
+slipping_control_common::LSStamped in_msg1;
+slipping_control_common::LSCombinedStamped out_msg;
 
 //Input topic
 string in_topic0("");
@@ -43,76 +46,22 @@ ros::Publisher pub_static;
 ros::Subscriber sub_static0;
 ros::Subscriber sub_static1;
 
-//SService clients
-ros::ServiceClient client_pause0;
-ros::ServiceClient client_pause1;
-ros::ServiceClient client_rotation0;
-ros::ServiceClient client_rotation1;
-
 /* USER FUN */
 void combineStatic();
 /**********************/
 
-double f_static0;
-double f_static1;
+void static_force_Callback0 (const slipping_control_common::LSStamped msg) {
 
-void static_force_Callback0 (const std_msgs::Float64::ConstPtr& msg) {
-
-    f_static0 = msg->data;
+    in_msg0 = msg;
     combineStatic();
+    pub_static.publish(out_msg);
 
 }
-void static_force_Callback1 (const std_msgs::Float64::ConstPtr& msg) {
+void static_force_Callback1 (const slipping_control_common::LSStamped msg) {
 
-    f_static1 = msg->data;
+    in_msg1 = msg;
     combineStatic();
-
-}
-
-
-/*Pause callback*/
-bool pause_callbk(std_srvs::SetBool::Request  &req, 
-   		 		std_srvs::SetBool::Response &res){
-
-    std_srvs::SetBool setBoolmsg;
-   	setBoolmsg.request.data = req.data;
-
-    bool b_0 = client_pause0.call(setBoolmsg);
-    b_0 = b_0 && setBoolmsg.response.success;
-    if(!b_0){
-        cout <<  HEADER_PRINT RED << "Filed to call set pause on 0" << CRESET << endl;
-    }
-    bool b_1 = client_pause1.call(setBoolmsg);
-    b_1 = b_1 && setBoolmsg.response.success;
-    if(!b_1){
-        cout <<  HEADER_PRINT RED << "Filed to call set pause on 1" << CRESET << endl;
-    }
-
-    res.success = b_0 && b_1;
-    return true;
-
-}
-
-
-bool rotation_callbk(slipping_control_common::FnsParams::Request  &req, 
-   		 		slipping_control_common::FnsParams::Response &res){
-
-    slipping_control_common::FnsParams setFnsParams;
-   	setFnsParams.request.control_rotation = req.control_rotation;
-
-    bool b_0 = client_rotation0.call(setFnsParams);
-    b_0 = b_0 && setFnsParams.response.success;
-    if(!b_0){
-        cout <<  HEADER_PRINT RED << "Filed to call set rotation on 0" << CRESET << endl;
-    }
-    bool b_1 = client_rotation1.call(setFnsParams);
-    b_1 = b_1 && setFnsParams.response.success;
-    if(!b_1){
-        cout <<  HEADER_PRINT RED << "Filed to call set rotation on 1" << CRESET << endl;
-    }
-
-    res.success = b_0 && b_1;
-    return true;
+    pub_static.publish(out_msg);
 
 }
 
@@ -128,43 +77,13 @@ int main(int argc, char *argv[]){
     nh_private.param("out_topic" , out_topic, string("static_force") ); 
     nh_private.param("in_topic0" , in_topic0, string("finger0/static_force") );
     nh_private.param("in_topic1" , in_topic1, string("finger1/static_force") );
-    
-    //Pause Service
-    string pause_service("");
-    nh_private.param("pause_service" , pause_service, string("pause") ); 
-
-    //Pause CLient
-    string pause_client0_str("");
-    nh_private.param("pause_client0" , pause_client0_str, string("finger0/pause") ); 
-    string pause_client1_str("");
-    nh_private.param("pause_client1" , pause_client1_str, string("finger1/pause") );
-
-    //Control rotation service
-    string control_rotation_str("");
-    nh_private.param("control_rotation_service" , control_rotation_str, string("control_rotation") );
-
-    //Control rotation client
-    string control_rotation_client0_str("");
-    nh_private.param("control_rotation_client0" , control_rotation_client0_str, string("finger0/control_rotation") ); 
-    string control_rotation_client1_str("");
-    nh_private.param("control_rotation_client1" , control_rotation_client1_str, string("finger1/control_rotation") );
 
     /******************/
 
-    pub_static = nh_public.advertise<std_msgs::Float64>(out_topic, 1);
+    pub_static = nh_public.advertise<slipping_control_common::LSCombinedStamped>(out_topic, 1);
 
     sub_static0 = nh_public.subscribe(in_topic0, 1, static_force_Callback0);
     sub_static1 = nh_public.subscribe(in_topic1, 1, static_force_Callback1);
-
-    ros::ServiceServer servicePause = nh_public.advertiseService(pause_service, pause_callbk);
-
-    ros::ServiceServer serviceRotation = nh_public.advertiseService(control_rotation_str, rotation_callbk);
-
-    client_pause0 = nh_public.serviceClient<std_srvs::SetBool>(pause_client0_str);
-    client_pause1 = nh_public.serviceClient<std_srvs::SetBool>(pause_client1_str);
-
-    client_rotation0 = nh_public.serviceClient<slipping_control_common::FnsParams>(control_rotation_client0_str);
-    client_rotation1 = nh_public.serviceClient<slipping_control_common::FnsParams>(control_rotation_client1_str);
 
     ros::spin();
 
@@ -174,9 +93,46 @@ int main(int argc, char *argv[]){
 /* USER FUN IMPL */
 
 void combineStatic(){
-    std_msgs::Float64 out;
-    out.data = f_static0 + f_static1;
-    pub_static.publish(out);
+    
+    if(in_msg0.header.stamp > in_msg1.header.stamp)
+        out_msg.header.stamp = in_msg0.header.stamp;
+    else
+        out_msg.header.stamp = in_msg1.header.stamp;
+
+    out_msg.header.frame_id = "combined_ls";
+
+    out_msg.sigma = (in_msg0.sigma + in_msg1.sigma) / 2.0;
+
+    out_msg.cor_tilde = (in_msg0.cor_tilde + in_msg1.cor_tilde) / 2.0;
+
+    out_msg.cor = (in_msg0.cor + in_msg1.cor) / 2.0;
+
+    out_msg.ft_tilde_ls = (in_msg0.ft_tilde_ls + in_msg1.ft_tilde_ls) / 2.0;
+
+    out_msg.taun_tilde_ls = (in_msg0.taun_tilde_ls + in_msg1.taun_tilde_ls) / 2.0;
+
+    out_msg.ft_ls = in_msg0.ft_ls + in_msg1.ft_ls;
+
+    out_msg.taun_ls = in_msg0.taun_ls + in_msg1.taun_ls;
+
+    out_msg.radius = (in_msg0.radius + in_msg1.radius) / 2.0;
+
+    out_msg.generalized_max_force = in_msg0.generalized_max_force + in_msg1.generalized_max_force;
+
+    out_msg.generalized_max_force0 = in_msg0.generalized_max_force;
+
+    out_msg.generalized_max_force1 = in_msg1.generalized_max_force;
+
+    out_msg.generalized_force = in_msg0.generalized_force + in_msg1.generalized_force;
+
+    out_msg.generalized_force0 = in_msg0.generalized_force;
+
+    out_msg.generalized_force1 = in_msg1.generalized_force;
+
+    out_msg.fn_ls = in_msg0.fn_ls + in_msg1.fn_ls;
+
+    out_msg.fn_ls_free_pivot = in_msg0.fn_ls_free_pivot + in_msg1.fn_ls_free_pivot;
+
 }
 
 /*******************/

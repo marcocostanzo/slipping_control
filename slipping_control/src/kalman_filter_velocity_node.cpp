@@ -27,8 +27,7 @@
 
 #include <Helper.h>
 #include <Kalman_Filter/Kalman_Filter_RK4.h>
-#include "slipping_control_common/VirtualCORStamped.h"
-#include "slipping_control_common/MaxForcesStamped.h"
+#include "slipping_control_common/LSCombinedStamped.h"
 #include "sun_utils/MultiVectorStamped.h"
 
 #include "slipping_control_common/functions.h"
@@ -49,86 +48,56 @@ Kalman_Filter_RK4* kf;
 Vector<KF_DIM_IN> input_vector; // u = [ generalizedforce ]
 Vector<KF_DIM_OUT> y_kf = Zeros;
 
+//Vars
 double MIN_GEN_MAX_FORCE;
+bool running = false;
 
 /* USER FUN */
-
+void stopFilter();
+void startFilter();
 void setInitialConditions();
 /**********************/
 
 /*ROS CALLBACK*/
 
-//Sub
-double cor0, cor1;
-void cor0_CB( const slipping_control_common::VirtualCORStamped::ConstPtr& msg ){
+void sub_ls_combined(const slipping_control_common::LSCombinedStamped::ConstPtr& msg)
+{
 
-    cor0 = msg->cor.virtual_cor;
-    ss_info.cor = (cor0+cor1)/2.0;
+    ss_info.cor = msg->cor;
 
-}
-
-void cor1_CB( const slipping_control_common::VirtualCORStamped::ConstPtr& msg ){
-
-    cor1 = msg->cor.virtual_cor;
-    ss_info.cor = (cor0+cor1)/2.0;
-
-}
-
-void max_generalized_force0_CB( const slipping_control_common::MaxForcesStamped::ConstPtr& msg){
-
-    if( msg->forces.generalized_max_force < MIN_GEN_MAX_FORCE ){
+    if( msg->generalized_max_force0 < MIN_GEN_MAX_FORCE ){
         ss_info.f_max_0 = MIN_GEN_MAX_FORCE;
     } else{
-        ss_info.f_max_0 = msg->forces.generalized_max_force;
+        ss_info.f_max_0 = msg->generalized_max_force0;
     }
 
-}
-
-void max_generalized_force1_CB( const slipping_control_common::MaxForcesStamped::ConstPtr& msg){
-    
-    if( msg->forces.generalized_max_force < MIN_GEN_MAX_FORCE ){
+    if( msg->generalized_max_force1 < MIN_GEN_MAX_FORCE ){
         ss_info.f_max_1 = MIN_GEN_MAX_FORCE;
     } else{
-        ss_info.f_max_1 = msg->forces.generalized_max_force;
+        ss_info.f_max_1 = msg->generalized_max_force1;
     }
 
-}
-
-void generalized_force0_CB( const std_msgs::Float64::ConstPtr& msg){
-    y_kf[0] = msg->data;
+    y_kf[0] = msg->generalized_force0;
+    y_kf[1] = msg->generalized_force1;
+    //input_vector[0] = msg->generalized_force;
     input_vector[0] = y_kf[0] + y_kf[1];
+
 }
 
-void generalized_force1_CB( const std_msgs::Float64::ConstPtr& msg){
-    y_kf[1] = msg->data;
-    input_vector[0] = y_kf[0] + y_kf[1];
-}
-
-
-/*Pause callback*/
-bool paused = true;
-void stopFilter(){
-    kf->reset();
-    paused = true;
-}
-void startFilter(){
-    kf->reset();
-    setInitialConditions();
-    paused = false;
-}
-bool pause_callbk(std_srvs::SetBool::Request  &req, 
+/*Set Running callback*/
+bool setRunning_callbk(std_srvs::SetBool::Request  &req, 
    		 		std_srvs::SetBool::Response &res){
 
 	if(req.data){
 
-        //stopFilter();
-		//cout << HEADER_PRINT YELLOW "PAUSED!" CRESET << endl;
-
-	} else{
-        if(paused){
+        if(!running){
             startFilter();
 		    cout << HEADER_PRINT GREEN "RE-STARTED!" CRESET << endl;
         }
+
+	} else{
+        stopFilter();
+		cout << HEADER_PRINT YELLOW "Stopped!" CRESET << endl;
     }
 
     res.success = true;
@@ -154,18 +123,8 @@ int main(int argc, char *argv[]){
     nh_private.param( "sigma_03" , ss_info.sigma_03, 1.0E2 );
     nh_private.param( "min_gen_max_force" , MIN_GEN_MAX_FORCE, 0.001 );
 
-    string cor0_tipic_str("");
-    nh_private.param( "cor0_topic" , cor0_tipic_str, string("finger0/cor") );
-    string cor1_tipic_str("");
-    nh_private.param( "cor1_topic" , cor1_tipic_str, string("finger1/cor") );
-    string max_gen_force0_tipic_str("");
-    nh_private.param( "max_gen_force0_topic" , max_gen_force0_tipic_str, string("finger0/max_gen_force") );
-    string max_gen_force1_tipic_str("");
-    nh_private.param( "max_gen_force1_topic" , max_gen_force1_tipic_str, string("finger1/max_gen_force") );
-    string gen_force0_tipic_str("");
-    nh_private.param( "gen_force0_topic" , gen_force0_tipic_str, string("finger0/gen_force") );
-    string gen_force1_tipic_str("");
-    nh_private.param( "gen_force1_topic" , gen_force1_tipic_str, string("finger1/gen_force") );
+    string ls_combined_tipic_str("");
+    nh_private.param( "ls_combined_tipic" , ls_combined_tipic_str, string("ls_combined") );
 
     string extimated_velocity_topic_str("");
     nh_private.param( "extimated_velocity_topic" , extimated_velocity_topic_str, string("extimated_vel") );
@@ -174,8 +133,8 @@ int main(int argc, char *argv[]){
     string extimated_measure_topic_str("");
     nh_private.param( "extimated_measure_topic" , extimated_measure_topic_str, string("extimated_measure") );
 
-    string pause_service_str("");
-    nh_private.param("pause_service" , pause_service_str, string("pause") );
+    string set_running_service_str("");
+    nh_private.param("set_running_service" , set_running_service_str, string("set_running") );
     /******************/
 
     string base_path("");
@@ -202,15 +161,10 @@ int main(int argc, char *argv[]){
                             boost::bind( vel_sys_HH_fcn, _1, _2, boost::ref(ss_info) ), 
                             1.0/Hz);
 
-    ros::ServiceServer servicePause = nh_public.advertiseService(pause_service_str, pause_callbk);
+    ros::ServiceServer serviceSetRunning = nh_public.advertiseService(set_running_service_str, setRunning_callbk);
 
     //Subs
-    ros::Subscriber subCOR0 = nh_public.subscribe(cor0_tipic_str, 1, cor0_CB);
-    ros::Subscriber subCOR1 = nh_public.subscribe(cor1_tipic_str, 1, cor1_CB);
-    ros::Subscriber subMax_Gen_Force0 = nh_public.subscribe(max_gen_force0_tipic_str, 1, max_generalized_force0_CB);
-    ros::Subscriber subMax_Gen_Force1 = nh_public.subscribe(max_gen_force1_tipic_str, 1, max_generalized_force1_CB);
-    ros::Subscriber subGen_Force0 = nh_public.subscribe(gen_force0_tipic_str, 1, generalized_force0_CB);
-    ros::Subscriber subGen_Force1 = nh_public.subscribe(gen_force1_tipic_str, 1, generalized_force1_CB);
+    ros::Subscriber subLSCombined = nh_public.subscribe(ls_combined_tipic_str, 1, sub_ls_combined);
     
     //Pubs
     ros::Publisher pubExtVel = nh_public.advertise<std_msgs::Float64>(extimated_velocity_topic_str, 1);
@@ -230,12 +184,11 @@ int main(int argc, char *argv[]){
     while(ros::ok()){
 
         ros::spinOnce();
-        if(paused){
+        if(!running){
             loop_rate.sleep();
             continue;
         }
 
-        //input_vector[0] = y_hat_k_k1[0] + y_hat_k_k1[1];
         y_hat_k_k1 = kf->apply( y_kf, input_vector,  W, V );
 
         //Fill Msgs
@@ -249,10 +202,14 @@ int main(int argc, char *argv[]){
         ext_state_msg.header.stamp = ext_measure_msg.header.stamp;
 
         /*Security check*/
-        if(     isnan(kf->get_state()[0]) || isnan(kf->get_state()[1]) || isnan(kf->get_state()[2]) ){
+        if(     isnan(kf->get_state()[0]) || isnan(kf->get_state()[1]) || isnan(kf->get_state()[2]) )
+        {
                 cout << HEADER_PRINT << BOLDRED "NANs... EXIT..." CRESET << endl;
+                ext_vel_msg.data = 0.0;
+                pubExtVel.publish(ext_vel_msg);
+                loop_rate.sleep();
                 exit(-1);
-            }
+        }
 
         //Publish
         pubExtVel.publish(ext_vel_msg);
@@ -260,7 +217,7 @@ int main(int argc, char *argv[]){
         pubExtMeasure.publish(ext_measure_msg);
 
         loop_rate.sleep();
-        loop_rate.reset();
+        loop_rate.reset(); //<== needed?
 
     }
 
@@ -268,12 +225,22 @@ int main(int argc, char *argv[]){
 }
 
 /* USER FUN IMPL */
+
+void stopFilter(){
+    kf->reset();
+    running = false;
+}
+void startFilter(){
+    kf->reset();
+    setInitialConditions();
+    running = true;
+}
+
 void setInitialConditions(){
     
     kf->reset();
     kf->set_state( makeVector( 0.0, y_kf[0]/ss_info.sigma_02, y_kf[0]/ss_info.sigma_03 ) ) ;
 
 }
-
 
 /*******************/

@@ -74,9 +74,9 @@ int main(int argc, char *argv[]){
 
     //Pub and sub
     string out_topic("");
-    nh_private.param("out_topic" , out_topic, string("static_force") ); 
-    nh_private.param("in_topic0" , in_topic0, string("finger0/static_force") );
-    nh_private.param("in_topic1" , in_topic1, string("finger1/static_force") );
+    nh_private.param("out_topic" , out_topic, string("ls_combined") ); 
+    nh_private.param("in_topic0" , in_topic0, string("finger0/ls") );
+    nh_private.param("in_topic1" , in_topic1, string("finger1/ls") );
 
     /******************/
 

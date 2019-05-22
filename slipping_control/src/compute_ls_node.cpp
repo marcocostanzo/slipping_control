@@ -27,8 +27,10 @@
 //#include "Helper.h"
 //#include "slipping_control_common/SetMu.h"
 
+//#define DEBUG_FZERO
+
 #define SIGMA_DEFAULT_VALUE 0.0
-#define SIGMA_MAX_VALUE 100.0
+#define SIGMA_MAX_VALUE 30.0
 
 #define HEADER_PRINT BOLDYELLOW "[" << ros::this_node::getName() << "] " CRESET 
 
@@ -63,20 +65,40 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
 
     //Extimate c_tilde
     bool b_max_iter;
+    bool b_first_try = true;
+    double c_tilde_initial_point = ls_msg.cor_tilde;
+    compute_c_tilde:
     double virtual_cor_tilde_tmp = computeCOR_tilde(    
                         ls_msg.sigma, 
                         ls_info.gamma,
                         b_max_iter, 
-                        ls_msg.cor_tilde
+                        c_tilde_initial_point
                         /*double MAX_SIGMA = 30.0, 
                         double GD_GAIN = 1.0, 
                         double GD_COST_TOL = 1.0E-6, 
                         double FIND_ZERO_LAMBDA = 1.0E-10,
                         int MAX_GD_ITER = 150*/
                         );
-    if( isnan(ls_msg.cor_tilde) || b_max_iter ){
+    if( isnan(virtual_cor_tilde_tmp) || b_max_iter ){
         //FindZero not converged
+        #ifdef DEBUG_FZERO
+        cout << HEADER_PRINT YELLOW "FindZero not converged... c_tilde= " << virtual_cor_tilde_tmp << " | b_max_iter= " << (b_max_iter ? "true" : "false") << CRESET << endl;
+        #endif
+        if(b_first_try){
+            #ifdef DEBUG_FZERO
+            cout << HEADER_PRINT YELLOW "Retry..." CRESET << endl;
+            #endif
+            //Decision -> change initial point
+            if(ls_msg.sigma>0.0){
+                c_tilde_initial_point = -1.0;
+            } else if(ls_msg.sigma<=0.0){
+                c_tilde_initial_point = 1.0;
+            }
+            b_first_try = false;
+            goto compute_c_tilde;
+        }
         //Decision -> do not update virtual_cor_tilde
+        cout << HEADER_PRINT RED "FindZero not converged... c_tilde= " << virtual_cor_tilde_tmp << " | b_max_iter= " << (b_max_iter ? "true" : "false") << CRESET << endl;
     } else{
         //FindZero Converged
         ls_msg.cor_tilde = virtual_cor_tilde_tmp;
@@ -118,48 +140,31 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
 
 }
 
-/*
-bool ch_mu_callbk(slipping_control_common::SetMu::Request  &req, 
-   		 		slipping_control_common::SetMu::Response &res){
-
-    cout << HEADER_PRINT << "Service Change mu: " << req.mu << endl;
-
-    if(req.mu<0.0){
-        cout << HEADER_PRINT << BOLDRED "ERROR!" << endl;
-        res.success = false;
-        return true;
-    }
-
-    ls_info.mu_ = req.mu;
-    ls_info.alpha_ = computeAlpha( ls_info );
-
-    cout << HEADER_PRINT << GREEN "Service Change mu OK " << endl;
-
-    res.success = true;
-	return true;
-
-}
-*/
-
 bool set_params_service_callbk(slipping_control_common::ChLSParams::Request  &req, 
    		 		                slipping_control_common::ChLSParams::Response &res)
 {
 
     cout << HEADER_PRINT "Change LS parameters..." << endl;
+    string what_changed;
     if(req.delta >= 0.0){
         ls_info.delta = req.delta;
+        what_changed += "delta = " + to_string(ls_info.delta) + " | ";
     }
     if(req.gamma >= 0.0){
         ls_info.gamma = req.gamma;
+        what_changed += "gamma = " + to_string(ls_info.gamma) + " | ";
     }
-    if(req.mu >= 0.0){
+    if(req.mu > 0.0){
         ls_info.mu = req.mu;
+        what_changed += "mu = " + to_string(ls_info.mu);
     }
     if(req.k > 0.0){
-        cout << HEADER_PRINT "Change k not supported" << endl;
+        cout << HEADER_PRINT RED "Change k not supported" CRESET << endl;
         //ls_info.k = req.k;
     }
     computeLSInfo(ls_info);
+
+    cout << HEADER_PRINT GREEN "Done: " CRESET << what_changed << endl;
 
     return true;
 

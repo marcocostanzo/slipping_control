@@ -16,6 +16,8 @@ sun_learning_lib
 sun_systems_lib
 sun_utils
 actionlib
+
+sun_tactile_common #to be removed in future
 )
 
 ## System dependencies are found with CMake's conventions

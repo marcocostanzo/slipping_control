@@ -25,8 +25,10 @@
 #include "std_srvs/SetBool.h"
 
 #include <slipping_control_common/HomeGripperAction.h>
+#include <sun_tactile_common/ComputeBiasAction.h>
 
 #include <actionlib/server/simple_action_server.h>
+#include <actionlib/client/simple_action_client.h>
 
 #ifndef SUN_COLORS
 #define SUN_COLORS
@@ -60,8 +62,9 @@ using namespace std;
 
 /*STATES*/
 #define STATE_UNDEFINED    -1
+#define STATE_HOME          0
 #define STATE_HOMING        1
-#define STATE_HOME          2
+#define STATE_REMOVING_BIAS 2
 
 class Slipping_Control_AS {
 
@@ -82,6 +85,11 @@ int state_ = STATE_UNDEFINED;
 ros::NodeHandle nh_;
 
 /*
+    Rate of the actions
+*/
+double hz_;
+
+/*
     Service client to sent home command to the gripper
 */
 ros::ServiceClient service_client_homing_gripper_;
@@ -99,6 +107,18 @@ ros::ServiceClient service_client_force_controller_set_running_;
 */
 actionlib::SimpleActionServer<slipping_control_common::HomeGripperAction> home_gripper_as_;
 
+/*************************************
+    Action Remove Bias
+***************************************/
+/*
+    SimpleActionServer 
+*/
+actionlib::SimpleActionServer<sun_tactile_common::ComputeBiasAction> compute_bias_as_;
+/*
+    Action Clients
+*/
+actionlib::SimpleActionClient<sun_tactile_common::ComputeBiasAction> ac_compute_bias_0, ac_compute_bias_1;
+
 public:
 
 /*
@@ -106,12 +126,21 @@ public:
 */
 Slipping_Control_AS(
     const ros::NodeHandle& nh,
+    double hz,
     const std::string& service_clinet_home_gripper,
     const std::string& service_clinet_force_controller_set_running,
-    const std::string& action_home_gripper
+    const std::string& action_client_compute_bias_0,
+    const std::string& action_client_compute_bias_1,
+    const std::string& action_home_gripper,
+    const std::string& action_compute_bias
 ):
     nh_(nh),
-    home_gripper_as_(nh_, action_home_gripper, boost::bind(&Slipping_Control_AS::executeHomeGripperCB, this, _1), false)
+    hz_(hz),
+    home_gripper_as_(nh_, action_home_gripper, boost::bind(&Slipping_Control_AS::executeHomeGripperCB, this, _1), false),
+    compute_bias_as_(nh_, action_compute_bias, boost::bind(&Slipping_Control_AS::executeComputeBiasCB, this, _1), false),
+    // true causes the client to spin its own thread
+    ac_compute_bias_0(action_client_compute_bias_0, true),
+    ac_compute_bias_1(action_client_compute_bias_1, true)
 {
     service_client_homing_gripper_ = nh_.serviceClient<std_srvs::Empty>(service_clinet_home_gripper);
     service_client_force_controller_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_force_controller_set_running);
@@ -125,10 +154,13 @@ void start()
 
     cout << HEADER_PRINT YELLOW "Wait for servers..." CRESET << endl;
     service_client_homing_gripper_.waitForExistence();
+    ac_compute_bias_0.waitForServer();
+    ac_compute_bias_1.waitForServer();
     cout << HEADER_PRINT GREEN "Servers online!" CRESET << endl;
 
     cout << HEADER_PRINT YELLOW "Starting Actions..." CRESET << endl;
     home_gripper_as_.start();
+    compute_bias_as_.start();
     cout << HEADER_PRINT GREEN "Actions Started!" CRESET << endl;
 }
 
@@ -178,6 +210,103 @@ void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPt
         home_gripper_as_.setAborted(result);
     }
 
+}
+
+/*************************************
+    Action Remove Bias
+***************************************/
+
+int compute_bias_id_;
+bool call_action_compute_bias(  actionlib::SimpleActionClient<sun_tactile_common::ComputeBiasAction>& ac_compute_bias, 
+                                const sun_tactile_common::ComputeBiasGoalConstPtr &goal, 
+                                int bias_id)
+{
+
+    compute_bias_id_ = bias_id;
+
+    ac_compute_bias.sendGoal(   
+                                *goal,
+                                boost::bind( &Slipping_Control_AS::compute_bias_doneCb, this, _1, _2 ), 
+                                boost::bind( &Slipping_Control_AS::compute_bias_activeCb, this ), 
+                                boost::bind( &Slipping_Control_AS::compute_bias_feedbackCb, this, _1 ) 
+                            );
+                            
+
+    //wait for the action to return
+    while(!ac_compute_bias.waitForResult(ros::Duration(1.0/hz_))){
+        ros::spinOnce();
+    }
+
+    actionlib::SimpleClientGoalState ac_state = ac_compute_bias.getState();
+    if(ac_state == actionlib::SimpleClientGoalState::SUCCEEDED && ac_compute_bias.getResult()->success  ){
+        //Ok bias computed...
+        return true;
+    } else {
+        //Error in computing bias
+        sun_tactile_common::ComputeBiasResult result = *(ac_compute_bias.getResult());
+        result.success = false;
+        result.msg += " | Error on bias" + std::to_string(bias_id);
+        compute_bias_as_.setAborted(result);
+        return false;
+    }
+
+}
+
+void executeComputeBiasCB( const sun_tactile_common::ComputeBiasGoalConstPtr &goal )
+{
+
+    if(state_ == STATE_HOME){
+
+        state_ = STATE_REMOVING_BIAS;
+
+        if(call_action_compute_bias(ac_compute_bias_0, goal, 0)){ //<-- Parallelize in future implementation...
+            if(call_action_compute_bias(ac_compute_bias_1, goal, 1)){
+                //Success
+                state_ = STATE_HOME;
+                sun_tactile_common::ComputeBiasResult result;
+                result.success = true;
+                result.msg = "OK";
+                result.bias = ac_compute_bias_0.getResult()->bias;
+                result.bias.insert( result.bias.end(), ac_compute_bias_1.getResult()->bias.begin(), ac_compute_bias_1.getResult()->bias.end() );
+                compute_bias_as_.setSucceeded(result);
+            } else {
+                state_ = STATE_UNDEFINED;
+            }
+        } else {
+            state_ = STATE_UNDEFINED;
+        }
+
+    } else {
+
+        //INVALID START STATE
+        //pErrorInvalidStartState("executeHomeGripperCB()", getStateStr(STATE_HOME));
+
+        sun_tactile_common::ComputeBiasResult result;
+        result.success = false;
+        result.msg = "Invalid start State: " /*+ getStateStr(state_)*/ ;
+        compute_bias_as_.setAborted(result);
+
+    }
+
+}
+
+// Called once when the goal completes
+void compute_bias_doneCb(const actionlib::SimpleClientGoalState& action_state,
+            const sun_tactile_common::ComputeBiasResultConstPtr& result)
+{
+    cout << HEADER_PRINT GREEN "Remove Bias " << compute_bias_id_ << " DONE! finisched in state " << action_state.toString()  << CRESET << endl;    
+}
+
+// Called once when the goal becomes active
+void compute_bias_activeCb()
+{
+    cout << HEADER_PRINT GREEN "Remove Bias " << compute_bias_id_ << " just went active " << CRESET << endl;
+}
+
+// Called every time feedback is received for the goal
+void compute_bias_feedbackCb(const sun_tactile_common::ComputeBiasFeedbackConstPtr& feedback)
+{
+    compute_bias_as_.publishFeedback( feedback );
 }
 
 /*************************************
@@ -257,20 +386,35 @@ int main(int argc, char *argv[])
     ros::NodeHandle nh_public;
 
     /*PARAMS*/
+    double hz;
+    nh_private.param("rate" , hz, 1000.0 );
+
     string service_clinet_home_gripper_str;
     nh_private.param("sc_home_gripper" , service_clinet_home_gripper_str, string("homing_gripper") );
     string service_clinet_force_controller_set_running_str;
     nh_private.param("sc_force_control_set_running" , service_clinet_force_controller_set_running_str, string("force_controller/set_running") );
-    string action_home_str;
-    nh_private.param("action_home" , action_home_str, string("action_home") );
+
+    string ac_compute_bias_0_str;
+    nh_private.param("ac_compute_bias_0" , ac_compute_bias_0_str, string("finger0/compute_bias") );
+    string ac_compute_bias_1_str;
+    nh_private.param("ac_compute_bias_1" , ac_compute_bias_1_str, string("finger1/compute_bias") );
+
+    string as_home_gripper_str;
+    nh_private.param("as_home_gripper" , as_home_gripper_str, string("action_home_gripper") );
+    string as_compute_bias_str;
+    nh_private.param("as_compute_bias" , as_compute_bias_str, string("action_compute_bias") );
 
     /*AS*/
 
     Slipping_Control_AS server(
         nh_public,
+        hz,
         service_clinet_home_gripper_str,
         service_clinet_force_controller_set_running_str,
-        action_home_str
+        ac_compute_bias_0_str,
+        ac_compute_bias_1_str,
+        as_home_gripper_str,
+        as_compute_bias_str
     );
     
     server.start();

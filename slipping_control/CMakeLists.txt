@@ -311,3 +311,12 @@ target_link_libraries(contact_force_fix
   ${catkin_LIBRARIES}
 )
 #########################################
+#########################################
+add_executable(slipping_control_as
+  src/slipping_control_as.cpp
+)
+add_dependencies(slipping_control_as ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(slipping_control_as
+  ${catkin_LIBRARIES}
+)
+#########################################

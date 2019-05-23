@@ -1,0 +1,12 @@
+#goal definition
+float64 desired_force
+float64 force_slope
+---
+#result definition
+bool success
+string msg
+---
+#feedback
+float64 reference_force
+
+

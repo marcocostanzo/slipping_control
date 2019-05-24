@@ -26,10 +26,12 @@
 
 #include <geometry_msgs/WrenchStamped.h>
 #include <std_msgs/Float64.h>
+#include "slipping_control_common/LSCombinedStamped.h"
 
 #include <slipping_control_common/HomeGripperAction.h>
 #include <sun_tactile_common/ComputeBiasAction.h>
 #include <slipping_control_common/GraspAction.h>
+#include <slipping_control_common/SlippingControlAction.h>
 
 #include <actionlib/server/simple_action_server.h>
 #include <actionlib/client/simple_action_client.h>
@@ -68,12 +70,14 @@
 using namespace std;
 
 /*STATES*/
-#define STATE_UNDEFINED    -1
-#define STATE_HOME          0
-#define STATE_HOMING        1
-#define STATE_REMOVING_BIAS 2
-#define STATE_GRASPING      3
-#define STATE_GRASPED       4
+#define STATE_UNDEFINED            -1
+#define STATE_HOME                  0
+#define STATE_HOMING                1
+#define STATE_REMOVING_BIAS         2
+#define STATE_GRASPING              3
+#define STATE_GRASPED               4
+#define STATE_TO_GRIPPER_PIVOTING   5
+#define STATE_GRIPPER_PIVOTING      6
 
 class Slipping_Control_AS {
 
@@ -151,6 +155,18 @@ std::string topic_grasp_force_str_, topic_force0_str_, topic_force1_str_;
 */
 double CONTACT_FORCE_THR_, BEFORE_CONTACT_FORCE_;
 
+/*************************************
+    Action Sipping Control
+***************************************/
+/*
+    SimpleActionServer 
+*/
+actionlib::SimpleActionServer<slipping_control_common::SlippingControlAction> slipping_control_as_;
+/*
+    Subscribers
+*/
+ros::Subscriber subLSCombined_;
+
 public:
 
 /*
@@ -161,6 +177,7 @@ Slipping_Control_AS(
     double hz,
     double CONTACT_FORCE_THR,
     double BEFORE_CONTACT_FORCE,
+    const std::string& topic_ls_combined,
     const std::string& topic_desired_grasp_force,
     const std::string& topic_grasp_force,
     const std::string& topic_force0,
@@ -171,7 +188,8 @@ Slipping_Control_AS(
     const std::string& action_client_compute_bias_1,
     const std::string& action_home_gripper,
     const std::string& action_compute_bias,
-    const std::string& action_grasp
+    const std::string& action_grasp,
+    const std::string& action_slipping_control
 ):
     nh_(nh),
     hz_(hz),
@@ -183,10 +201,12 @@ Slipping_Control_AS(
     home_gripper_as_(nh_, action_home_gripper, boost::bind(&Slipping_Control_AS::executeHomeGripperCB, this, _1), false),
     compute_bias_as_(nh_, action_compute_bias, boost::bind(&Slipping_Control_AS::executeComputeBiasCB, this, _1), false),
     grasp_as_(nh_, action_compute_bias, boost::bind(&Slipping_Control_AS::executeGraspCB, this, _1), false),
+    slipping_control_as_(nh_, action_slipping_control, boost::bind(&Slipping_Control_AS::executeSlippingControlCB, this, _1), false),
     // true causes the client to spin its own thread
     ac_compute_bias_0(action_client_compute_bias_0, true),
     ac_compute_bias_1(action_client_compute_bias_1, true)
 {
+    subLSCombined_ = nh_.subscribe(topic_ls_combined, 1, &Slipping_Control_AS::LSCombined_CB, this);
     pub_desired_force_ = nh_.advertise<std_msgs::Float64>(topic_desired_grasp_force, 1);
     service_client_homing_gripper_ = nh_.serviceClient<std_srvs::Empty>(service_clinet_home_gripper);
     service_client_force_controller_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_force_controller_set_running);
@@ -210,6 +230,8 @@ void start()
     grasp_as_.start();
     cout << HEADER_PRINT GREEN "Actions Started!" CRESET << endl;
 }
+
+protected:
 
 /*************************************
     Action Homing
@@ -399,7 +421,7 @@ void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
     }
 }
 
-void graspActionSetAborted(const string& msg)
+void graspActionSetAborted(const string& msg  = string("Aborted") )
 {
     slipping_control_common::GraspResult result;
     result.success = false;
@@ -543,6 +565,102 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
 
 }
 
+/*************************************
+    Action Slopping Control
+***************************************/
+
+void slippingControlActionSetAborted(const string& msg  = string("Aborted") )
+{
+    slipping_control_common::SlippingControlResult result;
+    result.success = false;
+    result.msg = msg;
+    slipping_control_as_.setAborted(result);
+}
+
+void slippingControlActionSetPreempted(const string& msg = string("Preempted"))
+{
+    slipping_control_common::SlippingControlResult result;
+    result.success = false;
+    result.msg = msg;
+    slipping_control_as_.setPreempted(result);
+}
+
+void slippingControlActionSetSucceeded(const string& msg = string("Succeeded"))
+{
+    slipping_control_common::SlippingControlResult result;
+    result.success = false;
+    result.state = state_;
+    result.msg = msg;
+    slipping_control_as_.setSucceeded(result);
+}
+
+void executeSlippingControlCB( const slipping_control_common::SlippingControlGoalConstPtr &goal )
+{
+
+    switch (goal->mode)
+    {
+        case slipping_control_common::SlippingControlGoal::MODE_GRIPPER_PIVOTING :{
+
+            //Check initial state
+            switch (state_)
+            {
+                case STATE_GRASPED:{
+                    state_ = STATE_TO_GRIPPER_PIVOTING;
+                    if( goToZeroDeg() ){
+                        state_ = STATE_GRIPPER_PIVOTING;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToZeroDeg");
+                    }                    
+                    break;
+                }
+                case STATE_TO_GRIPPER_PIVOTING:{
+                    cout << HEADER_PRINT BOLDYELLOW "Called GRIPPER_PIVOING but state is STATE_TO_GRIPPER_PIVOTING" CRESET << endl;
+                    state_ = STATE_TO_GRIPPER_PIVOTING;
+                    if( goToZeroDeg() ){
+                        state_ = STATE_GRIPPER_PIVOTING;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToZeroDeg");
+                    }
+                    break;
+                }
+                case STATE_GRIPPER_PIVOTING:{
+                    cout << HEADER_PRINT BOLDYELLOW "Called GRIPPER_PIVOING but state is STATE_GRIPPER_PIVOTING | refreshing..." CRESET << endl;
+                    state_ = STATE_GRIPPER_PIVOTING;
+                    if( goToZeroDeg() ){
+                        state_ = STATE_GRIPPER_PIVOTING;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToZeroDeg");
+                    }
+                    break;
+                }
+                default:{
+                    cout << HEADER_PRINT RED "Invalid Initial State in executeSlippingControlCB():MODE_GRIPPER_PIVOTING" CRESET << endl;
+                    slippingControlActionSetAborted("Invalid Initial State");
+
+                }
+            }
+            
+
+            break;
+        }
+        case slipping_control_common::SlippingControlGoal::MODE_SLIPPING_AVOIDANCE :{
+            slippingControlActionSetAborted("MODE_SLIPPING_AVOIDANCE NOT IMPLEMENTED");
+            break;
+        }
+        case slipping_control_common::SlippingControlGoal::MODE_DYN_SLIPPING_AVOIDANCE :{
+            slippingControlActionSetAborted("MODE_DYN_SLIPPING_AVOIDANCE NOT IMPLEMENTED");
+            break;
+        }
+        default:{
+
+        }
+    }
+    
+}
+
 
 /*************************************
     COMMON fcns
@@ -555,6 +673,7 @@ void abortAllActions()
 {
     //Add abortAction for each action here
     abortGrasping();
+    abortSlippingControl();
 }
 
 void abortGrasping()
@@ -562,6 +681,11 @@ void abortGrasping()
     if( grasp_as_.isActive() ){
         b_grasping_preemted_ = true;
     }
+}
+
+void abortSlippingControl()
+{
+    cout << HEADER_PRINT BOLDYELLOW "abortSlippingControl() is void!" CRESET << endl;
 }
 
 double grasp_force_m_;
@@ -586,6 +710,28 @@ void read_force1_cb(const geometry_msgs::WrenchStamped::ConstPtr& forceMsg)
 {
     f1_m_ = fabs(forceMsg->wrench.force.z);
     b_force1_arrived_ = true;
+}
+
+void LSCombined_CB(const slipping_control_common::LSCombinedStamped::ConstPtr& msg)
+{
+    switch (state_)
+    {
+        case STATE_GRIPPER_PIVOTING:{
+            publish_force_ref( msg->fn_ls_free_pivot );
+            break;
+            }
+        default:{
+            //Do nothing
+            }
+    }
+    
+}
+
+bool goToZeroDeg()
+{
+    cout << HEADER_PRINT BOLDYELLOW "goToZeroDeg() is void" CRESET << endl;
+    //remember to change state if something goes wrong
+    return true;
 }
 
 /************************************
@@ -642,7 +788,19 @@ bool force_controller_set_running(bool b_running)
     return send_set_running_srv(service_client_force_controller_set_running_ , b_running , "Force Controller");
 }
 
-};
+void publish_force_ref( double force )
+{
+    std_msgs::Float64 force_ref_msg;
+    force_ref_msg.data = force;
+    pub_desired_force_.publish(force_ref_msg);
+}
+
+};//END CLASS
+
+
+/************************************
+    MAIN
+************************************/
 
 int main(int argc, char *argv[])
 {
@@ -661,6 +819,8 @@ int main(int argc, char *argv[])
     double BEFORE_CONTACT_FORCE;
     nh_private.param("before_contact_force" , BEFORE_CONTACT_FORCE, 1.7 );
 
+    string topic_ls_combined_str;
+    nh_private.param("ls_combined_tipic" , topic_ls_combined_str, string("ls_combined") );
     string topic_desired_grasp_force_str;
     nh_private.param("topic_desired_grasp_force" , topic_desired_grasp_force_str, string("desired_grasp_force") );
     string topic_grasp_force_str;
@@ -686,6 +846,8 @@ int main(int argc, char *argv[])
     nh_private.param("as_compute_bias" , as_compute_bias_str, string("action_compute_bias") );
     string as_grasp_str;
     nh_private.param("as_grasp" , as_grasp_str, string("action_grasp") );
+    string as_slipping_control_str;
+    nh_private.param("as_slipping_control" , as_slipping_control_str, string("action_slipping_control") );
 
     /*AS*/
 
@@ -694,6 +856,7 @@ int main(int argc, char *argv[])
         hz,
         CONTACT_FORCE_THR,
         BEFORE_CONTACT_FORCE,
+        topic_ls_combined_str,
         topic_desired_grasp_force_str,
         topic_grasp_force_str,
         topic_force0_str,
@@ -704,7 +867,8 @@ int main(int argc, char *argv[])
         ac_compute_bias_1_str,
         as_home_gripper_str,
         as_compute_bias_str,
-        as_grasp_str
+        as_grasp_str,
+        as_slipping_control_str
     );
     
     server.start();

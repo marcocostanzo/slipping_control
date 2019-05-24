@@ -707,7 +707,8 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     break;
                 }
                 default:{
-                    
+                    cout << HEADER_PRINT RED "Invalid Initial State in executeSlippingControlCB():MODE_SLIPPING_AVOIDANCE" CRESET << endl;
+                    slippingControlActionSetAborted("Invalid Initial State");
                 }
             }
             
@@ -719,7 +720,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
             break;
         }
         default:{
-
+            slippingControlActionSetAborted("Invalid Request");
         }
     }
     

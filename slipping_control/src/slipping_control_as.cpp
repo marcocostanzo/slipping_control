@@ -604,7 +604,8 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
             //Check initial state
             switch (state_)
             {
-                case STATE_GRASPED:{
+                case STATE_GRASPED :
+                case STATE_SLIPPING_AVOIDANCE : {
                     state_ = STATE_TO_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){
                         state_ = STATE_GRIPPER_PIVOTING;
@@ -614,7 +615,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     }                    
                     break;
                 }
-                case STATE_TO_GRIPPER_PIVOTING:{
+                case STATE_TO_GRIPPER_PIVOTING : {
                     cout << HEADER_PRINT BOLDYELLOW "Called GRIPPER_PIVOING but state is STATE_TO_GRIPPER_PIVOTING" CRESET << endl;
                     state_ = STATE_TO_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){
@@ -625,8 +626,19 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     }
                     break;
                 }
+                case STATE_TO_SLIPPING_AVOIDANCE : {
+                    cout << HEADER_PRINT BOLDYELLOW "Called GRIPPER_PIVOING but state is STATE_TO_SLIPPING_AVOIDANCE" CRESET << endl;
+                    state_ = STATE_TO_GRIPPER_PIVOTING;
+                    if( goToZeroDeg() ){
+                        state_ = STATE_GRIPPER_PIVOTING;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToZeroDeg");
+                    }
+                    break;
+                }
                 case STATE_GRIPPER_PIVOTING:{
-                    cout << HEADER_PRINT BOLDYELLOW "Called GRIPPER_PIVOING but state is STATE_GRIPPER_PIVOTING | refreshing..." CRESET << endl;
+                    cout << HEADER_PRINT YELLOW "Called GRIPPER_PIVOING but state is STATE_GRIPPER_PIVOTING | refreshing..." CRESET << endl;
                     state_ = STATE_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){
                         state_ = STATE_GRIPPER_PIVOTING;
@@ -647,7 +659,59 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
             break;
         }
         case slipping_control_common::SlippingControlGoal::MODE_SLIPPING_AVOIDANCE :{
-            slippingControlActionSetAborted("MODE_SLIPPING_AVOIDANCE NOT IMPLEMENTED");
+            
+            switch (state_)
+            {
+                case STATE_GRASPED :
+                case STATE_GRIPPER_PIVOTING : {
+                    state_ = STATE_TO_SLIPPING_AVOIDANCE;
+                    if(goToSlippingAvoidance()){
+                        state_ = STATE_SLIPPING_AVOIDANCE;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToSlippingAvoidance");
+                    }
+                    break;
+                }
+                case STATE_TO_GRIPPER_PIVOTING :{
+                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_SLIPPING_AVOIDANCE but state is STATE_TO_GRIPPER_PIVOTING" CRESET << endl;
+                    state_ = STATE_TO_SLIPPING_AVOIDANCE;
+                    if(goToSlippingAvoidance()){
+                        state_ = STATE_SLIPPING_AVOIDANCE;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToSlippingAvoidance");
+                    }
+                    break;
+                }
+                case STATE_TO_SLIPPING_AVOIDANCE :{
+                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_SLIPPING_AVOIDANCE but state is STATE_TO_SLIPPING_AVOIDANCE" CRESET << endl;
+                    state_ = STATE_TO_SLIPPING_AVOIDANCE;
+                    if(goToSlippingAvoidance()){
+                        state_ = STATE_SLIPPING_AVOIDANCE;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToSlippingAvoidance");
+                    }
+                    break;
+                }
+                case STATE_SLIPPING_AVOIDANCE : {
+                    cout << HEADER_PRINT YELLOW "Called STATE_SLIPPING_AVOIDANCE but state is STATE_SLIPPING_AVOIDANCE | refreshing..." CRESET << endl;
+                    state_ = STATE_TO_SLIPPING_AVOIDANCE;
+                    if(goToSlippingAvoidance()){
+                        state_ = STATE_SLIPPING_AVOIDANCE;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToSlippingAvoidance");
+                    }
+                    break;
+                }
+                default:{
+                    
+                }
+            }
+            
+
             break;
         }
         case slipping_control_common::SlippingControlGoal::MODE_DYN_SLIPPING_AVOIDANCE :{
@@ -719,10 +783,14 @@ void LSCombined_CB(const slipping_control_common::LSCombinedStamped::ConstPtr& m
         case STATE_GRIPPER_PIVOTING:{
             publish_force_ref( msg->fn_ls_free_pivot );
             break;
-            }
+        }
+        case STATE_SLIPPING_AVOIDANCE:{
+            publish_force_ref( msg->fn_ls );
+            break;
+        }
         default:{
             //Do nothing
-            }
+        }
     }
     
 }
@@ -730,6 +798,13 @@ void LSCombined_CB(const slipping_control_common::LSCombinedStamped::ConstPtr& m
 bool goToZeroDeg()
 {
     cout << HEADER_PRINT BOLDYELLOW "goToZeroDeg() is void" CRESET << endl;
+    //remember to change state if something goes wrong
+    return true;
+}
+
+bool goToSlippingAvoidance()
+{
+    cout << HEADER_PRINT BOLDYELLOW "goToSlippingAvoidance() is void" CRESET << endl;
     //remember to change state if something goes wrong
     return true;
 }

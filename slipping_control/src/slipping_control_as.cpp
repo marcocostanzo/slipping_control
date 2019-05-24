@@ -70,14 +70,18 @@
 using namespace std;
 
 /*STATES*/
-#define STATE_UNDEFINED            -1
-#define STATE_HOME                  0
-#define STATE_HOMING                1
-#define STATE_REMOVING_BIAS         2
-#define STATE_GRASPING              3
-#define STATE_GRASPED               4
-#define STATE_TO_GRIPPER_PIVOTING   5
-#define STATE_GRIPPER_PIVOTING      6
+#define STATE_UNDEFINED                    -1
+#define STATE_HOME                          0
+#define STATE_HOMING                        1
+#define STATE_REMOVING_BIAS                 2
+#define STATE_GRASPING                      3
+#define STATE_GRASPED                       4
+#define STATE_TO_GRIPPER_PIVOTING           5
+#define STATE_GRIPPER_PIVOTING              6
+#define STATE_TO_SLIPPING_AVOIDANCE         7
+#define STATE_SLIPPING_AVOIDANCE            8
+#define STATE_TO_DYN_SLIPPING_AVOIDANCE     9
+#define STATE_DYN_SLIPPING_AVOIDANCE       10
 
 class Slipping_Control_AS {
 
@@ -165,7 +169,11 @@ actionlib::SimpleActionServer<slipping_control_common::SlippingControlAction> sl
 /*
     Subscribers
 */
-ros::Subscriber subLSCombined_;
+ros::Subscriber subLSCombined_, subDynFn_;
+/*
+    Service client to Start/Stop observer and dyn_fn_controller
+*/
+ros::ServiceClient service_client_observer_set_running_, service_client_dyn_controller_set_running_;
 
 public:
 
@@ -178,12 +186,15 @@ Slipping_Control_AS(
     double CONTACT_FORCE_THR,
     double BEFORE_CONTACT_FORCE,
     const std::string& topic_ls_combined,
+    const std::string& topic_dyn_fn,
     const std::string& topic_desired_grasp_force,
     const std::string& topic_grasp_force,
     const std::string& topic_force0,
     const std::string& topic_force1,
     const std::string& service_clinet_home_gripper,
     const std::string& service_clinet_force_controller_set_running,
+    const std::string& service_clinet_observer_set_running,
+    const std::string& service_clinet_dyn_controller_set_running,
     const std::string& action_client_compute_bias_0,
     const std::string& action_client_compute_bias_1,
     const std::string& action_home_gripper,
@@ -207,9 +218,12 @@ Slipping_Control_AS(
     ac_compute_bias_1(action_client_compute_bias_1, true)
 {
     subLSCombined_ = nh_.subscribe(topic_ls_combined, 1, &Slipping_Control_AS::LSCombined_CB, this);
+    subDynFn_ = nh_.subscribe(topic_dyn_fn, 1, &Slipping_Control_AS::dynFn_CB, this);
     pub_desired_force_ = nh_.advertise<std_msgs::Float64>(topic_desired_grasp_force, 1);
     service_client_homing_gripper_ = nh_.serviceClient<std_srvs::Empty>(service_clinet_home_gripper);
     service_client_force_controller_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_force_controller_set_running);
+    service_client_observer_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_observer_set_running);
+    service_client_dyn_controller_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_dyn_controller_set_running);
 }
 
 /*
@@ -220,6 +234,9 @@ void start()
 
     cout << HEADER_PRINT YELLOW "Wait for servers..." CRESET << endl;
     service_client_homing_gripper_.waitForExistence();
+    service_client_force_controller_set_running_.waitForExistence();
+    service_client_observer_set_running_.waitForExistence();
+    service_client_dyn_controller_set_running_.waitForExistence();
     ac_compute_bias_0.waitForServer();
     ac_compute_bias_1.waitForServer();
     cout << HEADER_PRINT GREEN "Servers online!" CRESET << endl;
@@ -228,6 +245,7 @@ void start()
     home_gripper_as_.start();
     compute_bias_as_.start();
     grasp_as_.start();
+    slipping_control_as_.start();
     cout << HEADER_PRINT GREEN "Actions Started!" CRESET << endl;
 }
 
@@ -242,17 +260,22 @@ void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPt
     bool b_error = false;
 
     //state homing
-    state_ = STATE_HOMING;
+    state_ = STATE_HOMING;  //The initial state does not matter
     //Abort all actions if running
     abortAllActions();
     //stop the low level force controller
     b_error = !force_controller_set_running(false);
+    //Stop dyn force controller
+    b_error = b_error & !dyn_controller_set_running(false);
+    //Stop observer
+    b_error = b_error & !observer_set_running(false);
 
     //send homing command
     if(send_homing_command()){
         //Homing command sent
 
         //wait for compleate homing
+        cout << HEADER_PRINT BOLDYELLOW "Homing check is open-loop..." CRESET << endl;
         sleep(1);
         //waitForGripperZeroVel();
 
@@ -302,7 +325,7 @@ bool call_action_compute_bias(  actionlib::SimpleActionClient<sun_tactile_common
                             
 
     //wait for the action to return
-    while(!ac_compute_bias.waitForResult(ros::Duration(1.0/hz_))){
+    while(ros::ok() && !ac_compute_bias.waitForResult(ros::Duration(1.0/hz_))){
         ros::spinOnce();
     }
 
@@ -386,22 +409,46 @@ bool b_grasping_preemted_ = false;
 void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
 {
     /*CHECK VALID STATE*/
-    switch (state_){
+    switch (state_)
+    {
 
         case STATE_HOME:
+        //case STATE_HOMING: <-- ???
         case STATE_GRASPED:
+        case STATE_GRIPPER_PIVOTING:
+        case STATE_SLIPPING_AVOIDANCE:
+        case STATE_DYN_SLIPPING_AVOIDANCE:
         {
+            //From a stable state
+            dyn_controller_set_running(false);// To be sure
             state_ = STATE_GRASPING;
             b_grasping_preemted_ = false;
             return doGraspingAction(goal);   
         }
+
         case STATE_GRASPING:{
+            //Grasping transition state.. this should not happen
+            cout << HEADER_PRINT BOLDYELLOW "Called executeGraspCB() but state is STATE_GRASPING... this should not happen" CRESET << endl;
             abortGrasping();
             state_ = STATE_GRASPING;
             b_grasping_preemted_ = false;
             return doGraspingAction(goal);
         }
-        default:{
+
+        case STATE_TO_GRIPPER_PIVOTING:
+        case STATE_TO_SLIPPING_AVOIDANCE: 
+        case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+        {
+            //Slipping control transition state
+            cout << HEADER_PRINT BOLDYELLOW "Called executeGraspCB() but state is a SlippingControl transition state..." CRESET << endl;
+            abortSlippingControl();
+            state_ = STATE_GRASPING;
+            b_grasping_preemted_ = false;
+            return doGraspingAction(goal);
+        }
+
+        default:
+        {
             /*pErrorInvalidStartState("executeGraspCB()",            getStateStr(STATE_HOME) 
                                                         + "|" + getStateStr(STATE_GRASPED) 
                                                         + "|" + getStateStr(STATE_GRASPING)
@@ -599,13 +646,20 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
 
     switch (goal->mode)
     {
-        case slipping_control_common::SlippingControlGoal::MODE_GRIPPER_PIVOTING :{
+
+        case slipping_control_common::SlippingControlGoal::MODE_GRIPPER_PIVOTING:
+        {
 
             //Check initial state
             switch (state_)
             {
-                case STATE_GRASPED :
-                case STATE_SLIPPING_AVOIDANCE : {
+
+                case STATE_GRASPED:
+                case STATE_SLIPPING_AVOIDANCE: 
+                case STATE_DYN_SLIPPING_AVOIDANCE: 
+                {
+                    //From a stable state
+                    dyn_controller_set_running(false);// To be sure
                     state_ = STATE_TO_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){
                         state_ = STATE_GRIPPER_PIVOTING;
@@ -615,8 +669,13 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     }                    
                     break;
                 }
-                case STATE_TO_GRIPPER_PIVOTING : {
-                    cout << HEADER_PRINT BOLDYELLOW "Called GRIPPER_PIVOING but state is STATE_TO_GRIPPER_PIVOTING" CRESET << endl;
+
+                case STATE_TO_GRIPPER_PIVOTING:
+                case STATE_TO_SLIPPING_AVOIDANCE:
+                case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+                {
+                    //From a slipping control transi tionstate | this should not happen
+                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_GRIPPER_PIVOTING but state is a Slipping Control state transition | this should not happen" CRESET << endl;
                     state_ = STATE_TO_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){
                         state_ = STATE_GRIPPER_PIVOTING;
@@ -626,20 +685,12 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     }
                     break;
                 }
-                case STATE_TO_SLIPPING_AVOIDANCE : {
-                    cout << HEADER_PRINT BOLDYELLOW "Called GRIPPER_PIVOING but state is STATE_TO_SLIPPING_AVOIDANCE" CRESET << endl;
-                    state_ = STATE_TO_GRIPPER_PIVOTING;
-                    if( goToZeroDeg() ){
-                        state_ = STATE_GRIPPER_PIVOTING;
-                        slippingControlActionSetSucceeded();
-                    } else {
-                        slippingControlActionSetAborted("Error in goToZeroDeg");
-                    }
-                    break;
-                }
-                case STATE_GRIPPER_PIVOTING:{
+
+                case STATE_GRIPPER_PIVOTING:
+                {
+                    //From the same state
                     cout << HEADER_PRINT YELLOW "Called GRIPPER_PIVOING but state is STATE_GRIPPER_PIVOTING | refreshing..." CRESET << endl;
-                    state_ = STATE_GRIPPER_PIVOTING;
+                    state_ = STATE_TO_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){
                         state_ = STATE_GRIPPER_PIVOTING;
                         slippingControlActionSetSucceeded();
@@ -648,22 +699,32 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     }
                     break;
                 }
-                default:{
+                
+                default:
+                {
+                    //Invalid Initial State
                     cout << HEADER_PRINT RED "Invalid Initial State in executeSlippingControlCB():MODE_GRIPPER_PIVOTING" CRESET << endl;
                     slippingControlActionSetAborted("Invalid Initial State");
-
                 }
+
             }
             
-
             break;
         }
-        case slipping_control_common::SlippingControlGoal::MODE_SLIPPING_AVOIDANCE :{
+
+        case slipping_control_common::SlippingControlGoal::MODE_SLIPPING_AVOIDANCE:
+        {
             
+            //Check initial state
             switch (state_)
             {
-                case STATE_GRASPED :
-                case STATE_GRIPPER_PIVOTING : {
+
+                case STATE_GRASPED:
+                case STATE_GRIPPER_PIVOTING: 
+                case STATE_DYN_SLIPPING_AVOIDANCE: 
+                {
+                    //From a stable state
+                    dyn_controller_set_running(false);// To be sure
                     state_ = STATE_TO_SLIPPING_AVOIDANCE;
                     if(goToSlippingAvoidance()){
                         state_ = STATE_SLIPPING_AVOIDANCE;
@@ -673,8 +734,13 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     }
                     break;
                 }
-                case STATE_TO_GRIPPER_PIVOTING :{
-                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_SLIPPING_AVOIDANCE but state is STATE_TO_GRIPPER_PIVOTING" CRESET << endl;
+
+                case STATE_TO_GRIPPER_PIVOTING:
+                case STATE_TO_SLIPPING_AVOIDANCE:
+                case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+                {
+                    //From a slipping control transi tionstate | this should not happen
+                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_SLIPPING_AVOIDANCE but state is a Slipping Control state transition | this should not happen" CRESET << endl;
                     state_ = STATE_TO_SLIPPING_AVOIDANCE;
                     if(goToSlippingAvoidance()){
                         state_ = STATE_SLIPPING_AVOIDANCE;
@@ -684,18 +750,9 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     }
                     break;
                 }
-                case STATE_TO_SLIPPING_AVOIDANCE :{
-                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_SLIPPING_AVOIDANCE but state is STATE_TO_SLIPPING_AVOIDANCE" CRESET << endl;
-                    state_ = STATE_TO_SLIPPING_AVOIDANCE;
-                    if(goToSlippingAvoidance()){
-                        state_ = STATE_SLIPPING_AVOIDANCE;
-                        slippingControlActionSetSucceeded();
-                    } else {
-                        slippingControlActionSetAborted("Error in goToSlippingAvoidance");
-                    }
-                    break;
-                }
+
                 case STATE_SLIPPING_AVOIDANCE : {
+                    //From the same state
                     cout << HEADER_PRINT YELLOW "Called STATE_SLIPPING_AVOIDANCE but state is STATE_SLIPPING_AVOIDANCE | refreshing..." CRESET << endl;
                     state_ = STATE_TO_SLIPPING_AVOIDANCE;
                     if(goToSlippingAvoidance()){
@@ -706,20 +763,88 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     }
                     break;
                 }
-                default:{
+
+                default:
+                {
+                    //Invalid Initial State
                     cout << HEADER_PRINT RED "Invalid Initial State in executeSlippingControlCB():MODE_SLIPPING_AVOIDANCE" CRESET << endl;
                     slippingControlActionSetAborted("Invalid Initial State");
                 }
+
             }
-            
 
             break;
         }
+
+
         case slipping_control_common::SlippingControlGoal::MODE_DYN_SLIPPING_AVOIDANCE :{
-            slippingControlActionSetAborted("MODE_DYN_SLIPPING_AVOIDANCE NOT IMPLEMENTED");
+            
+            //Check initial state
+            switch (state_)
+            {
+
+                case STATE_GRASPED:
+                case STATE_GRIPPER_PIVOTING: 
+                case STATE_SLIPPING_AVOIDANCE: 
+                {
+                    //From a stable state
+                    state_ = STATE_TO_DYN_SLIPPING_AVOIDANCE;
+                    //In this case I will reset the dyn_force_controller
+                    if(goToDynSlippingAvoidance(true)){
+                        state_ = STATE_DYN_SLIPPING_AVOIDANCE;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToDynSlippingAvoidance");
+                    }
+                    break;
+                }
+
+                case STATE_TO_GRIPPER_PIVOTING:
+                case STATE_TO_SLIPPING_AVOIDANCE:
+                case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+                {
+                    //From a slipping control transi tionstate | this should not happen
+                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_DYN_SLIPPING_AVOIDANCE but state is a Slipping Control state transition | this should not happen" CRESET << endl;
+                    state_ = STATE_TO_DYN_SLIPPING_AVOIDANCE;
+                    if(goToDynSlippingAvoidance()){
+                        state_ = STATE_DYN_SLIPPING_AVOIDANCE;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error in goToDynSlippingAvoidance");
+                    }
+                    break;
+                }
+
+                case STATE_DYN_SLIPPING_AVOIDANCE: 
+                {
+                    //From the same state
+                    cout << HEADER_PRINT YELLOW "Called STATE_DYN_SLIPPING_AVOIDANCE but state is STATE_DYN_SLIPPING_AVOIDANCE | refreshing..." << endl
+                    << "I will not reset the dyn force controller if it is active..." CRESET << endl;
+                    state_ = STATE_TO_DYN_SLIPPING_AVOIDANCE;
+                    if(goToDynSlippingAvoidance()){
+                        state_ = STATE_DYN_SLIPPING_AVOIDANCE;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted("Error goToDynSlippingAvoidance");
+                    }
+                    break;
+                }
+
+                default:
+                {
+                    //Invalid Initial State
+                    cout << HEADER_PRINT RED "Invalid Initial State in executeSlippingControlCB():MODE_DYN_SLIPPING_AVOIDANCE" CRESET << endl;
+                    slippingControlActionSetAborted("Invalid Initial State");
+                }
+
+            }
+            
             break;
         }
-        default:{
+
+        default:
+        {
+            //Invalid INPUT IN GOAL
             slippingControlActionSetAborted("Invalid Request");
         }
     }
@@ -777,23 +902,69 @@ void read_force1_cb(const geometry_msgs::WrenchStamped::ConstPtr& forceMsg)
     b_force1_arrived_ = true;
 }
 
+double fn_ls_;
 void LSCombined_CB(const slipping_control_common::LSCombinedStamped::ConstPtr& msg)
 {
+
+    fn_ls_ = msg->fn_ls; //To use it in Dyn Fn CB
+
     switch (state_)
     {
-        case STATE_GRIPPER_PIVOTING:{
+
+        case STATE_GRIPPER_PIVOTING:
+        {
             publish_force_ref( msg->fn_ls_free_pivot );
             break;
         }
-        case STATE_SLIPPING_AVOIDANCE:{
+
+        case STATE_SLIPPING_AVOIDANCE:
+        {
             publish_force_ref( msg->fn_ls );
             break;
         }
-        default:{
+
+        case STATE_DYN_SLIPPING_AVOIDANCE:
+        {
+            publish_force_ref( msg->fn_ls + fn_dyn_ );
+            break;
+        }
+
+        default:
+        {
             //Do nothing
         }
+
     }
     
+}
+
+double fn_dyn_;
+void dynFn_CB(const std_msgs::Float64::ConstPtr& msg)
+{
+
+    //If it is not fn_ls_, return! it is better to wait for the fn_ls_ message to arrive
+    if( fn_ls_ == 0.0 )
+        return;
+
+    switch (state_)
+    {
+
+        case STATE_DYN_SLIPPING_AVOIDANCE:
+        {
+            fn_dyn_ = msg->data; //To use it in LsCombined CB
+            publish_force_ref( fn_ls_ + msg->data );
+            break;
+        }
+
+        default:
+        {
+            //Do nothing
+            fn_dyn_ = 0.0; //<-- to be sure
+        }
+
+    }
+    
+
 }
 
 bool goToZeroDeg()
@@ -808,6 +979,48 @@ bool goToSlippingAvoidance()
     cout << HEADER_PRINT BOLDYELLOW "goToSlippingAvoidance() is void" CRESET << endl;
     //remember to change state if something goes wrong
     return true;
+}
+
+bool goToDynSlippingAvoidance( bool b_reset_dyn_force_controller = false, bool b_reset_observer = false )
+{
+
+    //IF flags are true, reset observer and controller by calling first set_running(false)
+    if(b_reset_dyn_force_controller)
+    {
+        if(!dyn_controller_set_running(false))
+        {
+            cout << HEADER_PRINT BOLDRED "FAIL TO RESET DYN CONTROLLER..." CRESET << endl;
+            state_ = STATE_UNDEFINED;
+            return false;
+        }
+    }
+    if(b_reset_observer)
+    {
+        if(!observer_set_running(false))
+        {
+            cout << HEADER_PRINT BOLDRED "FAIL TO RESET OBSERVER..." CRESET << endl;
+            state_ = STATE_UNDEFINED;
+            return false;
+        }
+    }
+
+    //Make sure that observer is active
+    if(!observer_set_running(true))
+    {
+        cout << HEADER_PRINT BOLDRED "FAIL TO START OBSERVER..." CRESET << endl;
+        state_ = STATE_UNDEFINED;
+        return false;
+    }
+    //Make sure that dyn controller is active
+    if(!dyn_controller_set_running(true))
+    {
+        cout << HEADER_PRINT BOLDRED "FAIL TO START DYN CONTROLLER..." CRESET << endl;
+        state_ = STATE_UNDEFINED;
+        return false;
+    }
+    
+    return true;
+
 }
 
 /************************************
@@ -864,6 +1077,22 @@ bool force_controller_set_running(bool b_running)
     return send_set_running_srv(service_client_force_controller_set_running_ , b_running , "Force Controller");
 }
 
+/*
+    Start / Stop  observer
+*/
+bool observer_set_running(bool b_running)
+{
+    return send_set_running_srv(service_client_observer_set_running_ , b_running , "Observer");
+}
+
+/*
+    Start / Stop  dyn controller
+*/
+bool dyn_controller_set_running(bool b_running)
+{
+    return send_set_running_srv(service_client_dyn_controller_set_running_ , b_running , "Dyn Controller");
+}
+
 void publish_force_ref( double force )
 {
     std_msgs::Float64 force_ref_msg;
@@ -896,7 +1125,9 @@ int main(int argc, char *argv[])
     nh_private.param("before_contact_force" , BEFORE_CONTACT_FORCE, 1.7 );
 
     string topic_ls_combined_str;
-    nh_private.param("ls_combined_tipic" , topic_ls_combined_str, string("ls_combined") );
+    nh_private.param("topic_ls_combined" , topic_ls_combined_str, string("ls_combined") );
+    string topic_dyn_fn_str;
+    nh_private.param("topic_dyn_force" , topic_dyn_fn_str, string("dyn_force") );
     string topic_desired_grasp_force_str;
     nh_private.param("topic_desired_grasp_force" , topic_desired_grasp_force_str, string("desired_grasp_force") );
     string topic_grasp_force_str;
@@ -910,6 +1141,10 @@ int main(int argc, char *argv[])
     nh_private.param("sc_home_gripper" , service_clinet_home_gripper_str, string("homing_gripper") );
     string service_clinet_force_controller_set_running_str;
     nh_private.param("sc_force_control_set_running" , service_clinet_force_controller_set_running_str, string("force_controller/set_running") );
+    string service_clinet_observer_set_running_str;
+    nh_private.param("sc_observer_set_running" , service_clinet_observer_set_running_str, string("observer/set_running") );
+    string service_clinet_dyn_controller_set_running_str;
+    nh_private.param("sc_dyn_controller_set_running" , service_clinet_dyn_controller_set_running_str, string("dyn_controller/set_running") );
 
     string ac_compute_bias_0_str;
     nh_private.param("ac_compute_bias_0" , ac_compute_bias_0_str, string("finger0/compute_bias") );
@@ -933,12 +1168,15 @@ int main(int argc, char *argv[])
         CONTACT_FORCE_THR,
         BEFORE_CONTACT_FORCE,
         topic_ls_combined_str,
+        topic_dyn_fn_str,
         topic_desired_grasp_force_str,
         topic_grasp_force_str,
         topic_force0_str,
         topic_force1_str,
         service_clinet_home_gripper_str,
         service_clinet_force_controller_set_running_str,
+        service_clinet_observer_set_running_str,
+        service_clinet_dyn_controller_set_running_str,
         ac_compute_bias_0_str,
         ac_compute_bias_1_str,
         as_home_gripper_str,

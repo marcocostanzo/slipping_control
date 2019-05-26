@@ -24,7 +24,7 @@
 #include "std_srvs/Empty.h"
 #include "std_srvs/SetBool.h"
 
-#include <geometry_msgs/WrenchStamped.h>
+#include <slipping_control_common/ContactForcesStamped.h>
 #include <std_msgs/Float64.h>
 #include "slipping_control_common/LSCombinedStamped.h"
 
@@ -968,17 +968,17 @@ void read_grasp_force_cb(const std_msgs::Float64::ConstPtr& forceMsg)
 
 double f0_m_;
 bool b_force0_arrived_ = false;
-void read_force0_cb(const geometry_msgs::WrenchStamped::ConstPtr& forceMsg)
+void read_force0_cb(const slipping_control_common::ContactForcesStamped::ConstPtr& forceMsg)
 {
-    f0_m_ = fabs(forceMsg->wrench.force.z);
+    f0_m_ = fabs(forceMsg->forces.fn);
     b_force0_arrived_ = true;
 }
 
 double f1_m_;
 bool b_force1_arrived_ = false;
-void read_force1_cb(const geometry_msgs::WrenchStamped::ConstPtr& forceMsg)
+void read_force1_cb(const slipping_control_common::ContactForcesStamped::ConstPtr& forceMsg)
 {
-    f1_m_ = fabs(forceMsg->wrench.force.z);
+    f1_m_ = fabs(forceMsg->forces.fn);
     b_force1_arrived_ = true;
 }
 

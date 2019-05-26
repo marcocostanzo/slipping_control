@@ -1,126 +1,146 @@
 <launch>
 
-    <!-- Gripper connection -->
+    <!--Finger connection-->
+    <arg name="serial_port_finger0" default="/dev/ttyUSB0" />
+    <arg name="serial_port_finger1" default="/dev/ttyUSB1" />
+    <arg name="finger0_code" default="#H003_rigid" />
+    <arg name="finger1_code" default="#H004_rigid" />
+
+    <!-- Gripper Connection -->
     <arg name="gripper_ip" default="192.168.2.110" />
     <arg name="gripper_port" default="1000" />
     <arg name="local_port" default="1501" />
     <arg name="gripper_model" value="wsg50" />
+
+    <!--ROS Params-->
+    <arg name="name_space_finger0" value="finger0" />
+    <arg name="name_space_finger1" value="finger1" />
+
+    <!-- Params Read Wrench -->
     <arg name="finger_distance_offset" default="0.0"/>
 
-    <!-- Low level force control -->
-    <!-- <arg name="force_control_gain" default="3.4" /> -->
+    <!-- Params Low level force control -->
     <arg name="force_control_gain" default="27.0" />
     <arg name="force_control_max_force" default="18.0" />
     <arg name="force_control_filter" default="true" />
     <arg name="force_control_cut_freq" default="250.0" />
     <arg name="force_control_rate" default="1000.0" />
 
-    <!-- Finger Connection -->
-    <arg name="serial_port_finger0" default="/dev/ttyUSB0" />
-    <arg name="serial_port_finger1" default="/dev/ttyUSB1" />
-    <arg name="finger0_code" default="#H003_rigid" />
-    <arg name="finger1_code" default="#H004_rigid" />
+    <arg name="stiff_1" default="5000.0" />
+    <arg name="stiff_2" default="5.0839E6" />
+    <arg name="stiff_use_linear_model" default="false" />
 
     <!-- Measure Filtering -->
-    <arg name="cut_freq_filter_voltage" default="400.0" />
-    <arg name="rate_filter_voltage" default="800.0" />
-    <arg name="cut_freq_filter_wrench" default="0.5" />
-    <arg name="rate_filter_wrench" default="1.0" />
+    <!--
     <arg name="cut_freq_filter_contact_force" default="10.0"/>
     <arg name="rate_filter_contact_force" default="100.0"/>
+    -->
 
-    <!-- Fixed Vars -->
-    <arg name="grasp_force_topic" value="grasp_force" />
-    <arg name="wrench_topic" value="wrench" />
-    <arg name="force_command_topic" value="command_force" />
-    <arg name="pause_force_control_srv" value="force_control/pause" />
-    <arg name="raw_homing_gripper_srv" value="homing_raw" />
-    <arg name="name_space_finger0" value="finger0" />
-    <arg name="name_space_finger1" value="finger1" />
-    <arg name="contact_force_topic" value="contact_force" />
-    <arg name="remove_bias_srv" value="remove_bias" />
+    <!-- Pubs -->
     <arg name="width_topic" value="width" />
-    <arg name="finger_contact_wrench_topic" value="contact_wrench"/>
-    <arg name="centroid_topic" value="centroid"/>
+    <arg name="wrench_topic" value="wrench" />
+    <arg name="grasp_force_topic" value="grasp_force" />
+    <arg name="contact_force_topic" value="contact_force" />
+
+    <!-- Internal Pub/Sub -->
+    <arg name="force_command_topic" value="command_force" />
+
+    <!--Service Server-->
+    <arg name="raw_homing_gripper_srv" value="homing_raw" />
+    <arg name="force_control_set_running_service" value="force_control/set_running" />
+
+    <!--Action Server-->
+    <arg name="compute_bias_action" default="compute_bias_action" />
+    
 
     <group ns="/$(arg gripper_model)">
 
+<!--///-->
+<!--Read Wrench dual-->
+
+    <include file="$(find sun_tactile_driver)/launch/read_wrench_dual.launch">
+
+        <!--Finger connection-->
+        <arg name="serial_port_finger0" value="$(arg serial_port_finger0)" />
+        <arg name="serial_port_finger1" value="$(arg serial_port_finger1)" />
+        <arg name="finger0_code" value="$(arg finger0_code)" />
+        <arg name="finger1_code" value="$(arg finger1_code)" />
+
+        <!--ROS Params-->
+        <arg name="namespace_finger0" value="$(arg name_space_finger0)" />
+        <arg name="namespace_finger1" value="$(arg name_space_finger1)" />
+        <arg name="frame_id_finger0" value="fingertip0" />
+        <arg name="frame_id_finger1" value="fingertip1" />
+        <arg name="frame_id_grasp" value="grasp_center"/>
+
+        <!--Params-->
+        <arg name="finger_distance_offset" value="$(arg finger_distance_offset)"/>
+
+        <!--Subs-->
+        <arg name="finger_distance_topic" value="$(arg width_topic)"/>
+
+        <!--Pubs-->
+        <arg name="wrench_topic" value="$(arg wrench_topic)"/>
+        <arg name="grasp_force_topic" value="$(arg grasp_force_topic)"/>
+
+        <!--Action Server-->
+        <arg name="compute_bias_action" default="$(arg compute_bias_action)" />
+
+    </include>
+
+<!--///-->
+<!--WSG50 CONTROL-->
+
     <include file="$(find sun_wsg50_control)/launch/wsg50_control.launch">
 
+        <!--Gripper connection-->
         <arg name="gripper_ip" value="$(arg gripper_ip)" />
         <arg name="gripper_port" value="$(arg gripper_port)" />
         <arg name="local_port" value="$(arg local_port)" />
-
-        <arg name="goal_speed_topic" value="goal_speed" />
-        <arg name="status_topic" value="status" />
-        <arg name="homing_srv" value="$(arg raw_homing_gripper_srv)" />
-
         <arg name="gripper_model" value="$(arg gripper_model)" />
 
-
-        <arg name="measure_topic" value="$(arg grasp_force_topic)" />
-        <arg name="measure_topic_type" value="Float64" />
-        <arg name="width_topic" default="$(arg width_topic)" />
-
-        <arg name="force_command_topic" value="$(arg force_command_topic)" />
-
-        <arg name="pause_service" value="$(arg pause_force_control_srv)" />
-        <arg name="start_in_pause" value="true" />
-
+        <!--Params-->
         <arg name="control_gain" value="$(arg force_control_gain)" />
         <arg name="max_force" value="$(arg force_control_max_force)" />
+
+        <arg name="stiff_1" value="$(arg stiff_1)" />
+        <arg name="stiff_2" value="$(arg stiff_2)" />
+        <arg name="use_linear_model" value="$(arg stiff_use_linear_model)" />
 
         <arg name="filter_control" value="$(arg force_control_filter)" />
         <arg name="cut_freq" value="$(arg force_control_cut_freq)" />
         <arg name="rate" value="$(arg force_control_rate)" />
 
-    </include>
+        <!--Subs-->
+        <arg name="measure_topic" value="$(arg grasp_force_topic)" />
+        <arg name="measure_topic_type" value="Float64" />
+        <arg name="force_command_topic" value="$(arg force_command_topic)" />
 
-    <include file="$(find sun_tactile_driver)/launch/read_wrench_dual.launch">
+        <!--Pubs-->
+        <arg name="status_topic" value="status" />
+        <arg name="width_topic" default="$(arg width_topic)" />
 
-        <arg name="wrench_topic" value="$(arg wrench_topic)"/>
-
-        <arg name="namespace_finger0" value="$(arg name_space_finger0)" />
-        <arg name="namespace_finger1" value="$(arg name_space_finger1)" />
-
-        <arg name="serial_port_finger0" value="$(arg serial_port_finger0)" />
-        <arg name="serial_port_finger1" value="$(arg serial_port_finger1)" />
-
-        <arg name="frame_id_finger0" value="fingertip0" />
-        <arg name="frame_id_finger1" value="fingertip1" />
-
-        <arg name="finger0_code" value="$(arg finger0_code)" />
-        <arg name="finger1_code" value="$(arg finger1_code)" />
-
-        <arg name="voltage_topic" value="tactile_voltage" />
-        <arg name="finger_wrench_topic" value="$(arg wrench_topic)" />
-        <arg name="remove_bias_srv" value="$(arg remove_bias_srv)" />
-
-        <arg name="cut_freq_filter_voltage" value="$(arg cut_freq_filter_voltage)" />
-        <arg name="rate_filter_voltage" value="$(arg rate_filter_voltage)" />
-        <arg name="cut_freq_filter_wrench" value="$(arg cut_freq_filter_wrench)" />
-        <arg name="rate_filter_wrench" value="$(arg rate_filter_wrench)" />
-
-        <arg name="finger_distance_topic" value="$(arg width_topic)"/>
-        <arg name="finger_distance_offset" value="$(arg finger_distance_offset)"/>
-
-        <arg name="frame_id_grasp" value="grasp_center"/>
-
-        <arg name="grasp_force_topic" value="$(arg grasp_force_topic)"/>
-
-        <arg name="finger_contact_wrench_topic" value="$(arg finger_contact_wrench_topic)"/>
-        <arg name="centroid_topic" value="$(arg centroid_topic)"/>
+        <!--Service Server-->
+        <arg name="homing_srv" value="$(arg raw_homing_gripper_srv)" />
+        <arg name="force_control_set_running_service" value="$(arg force_control_set_running_service)" />
+        <arg name="force_control_start_running" value="false" />
 
     </include>
+
+<!--///-->
+<!--Wrench transform 0-->
 
     <node name="wrench_stamped_2_contact_force_stamped" ns="$(arg name_space_finger0)" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 
-        <!--<param name="input_topic" type="string" value="$(arg finger_contact_wrench_topic)"/>-->
         <param name="input_topic" type="string" value="$(arg wrench_topic)"/>
 
         <param name="output_topic" type="string" value="$(arg contact_force_topic)"/>
 
     </node>
+
+<!--///-->
+<!--Filter Contact 0-->
+<!--
     <node name="filter_contact_force" ns="$(arg name_space_finger0)" pkg="slipping_control" type="filter_contact_force" output="screen">
 
         <param name="in_topic" type="string" value="$(arg contact_force_topic)"/>
@@ -132,15 +152,21 @@
         <param name="rate" value="$(arg rate_filter_contact_force)"/>
 
     </node>
+-->
+<!--///-->
+<!--Wrench transform 1-->
 
     <node name="wrench_stamped_2_contact_force_stamped" ns="$(arg name_space_finger1)" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 
-        <!--<param name="input_topic" type="string" value="$(arg finger_contact_wrench_topic)"/>-->
         <param name="input_topic" type="string" value="$(arg wrench_topic)"/>
 
         <param name="output_topic" type="string" value="$(arg contact_force_topic)"/>
 
     </node>
+
+<!--///-->
+<!--Filter Contact 1-->
+<!--
     <node name="filter_contact_force" ns="$(arg name_space_finger1)" pkg="slipping_control" type="filter_contact_force" output="screen">
 
         <param name="in_topic" type="string" value="$(arg contact_force_topic)"/>
@@ -152,140 +178,86 @@
         <param name="rate" value="$(arg rate_filter_contact_force)"/>
 
     </node>
-
-    <node name="to_matlab" ns="$(arg name_space_finger0)" pkg="slipping_control_wsg50_launch" type="to_matlab" output="screen">
-
-        <param name="contact_forces_topic" type="string" value="$(arg contact_force_topic)"/>
-
-        <param name="max_forces_topic" type="string" value="/$(arg gripper_model)/static_control_0/max_force"/>
-
-        <param name="virtual_cor_topic" type="string" value="/$(arg gripper_model)/static_control_0/cor"/>
-
-        <param name="kf_measure_topic" type="string" value="/$(arg gripper_model)/extimated_measure_topic"/>
-
-    </node>
-    <node name="to_matlab" ns="$(arg name_space_finger1)" pkg="slipping_control_wsg50_launch" type="to_matlab" output="screen">
-
-        <param name="contact_forces_topic" type="string" value="$(arg contact_force_topic)"/>
-
-        <param name="max_forces_topic" type="string" value="/$(arg gripper_model)/static_control_1/max_force"/>
-
-        <param name="virtual_cor_topic" type="string" value="/$(arg gripper_model)/static_control_1/cor"/>
-
-    </node>
+-->
 
     <include file="$(find slipping_control)/launch/slipping_control.launch">
 
-        <!-- Settings -->
-        <arg name="ns_static_control0" value="static_control_0"/>
-        <arg name="ns_static_control1" value="static_control_1"/>
+        <!-- Subs -->
+	    <arg name="contact_force_0_topic" default="$(arg name_space_finger0)/$(arg contact_force_topic)"/>
+	    <arg name="contact_force_1_topic" default="$(arg name_space_finger1)/$(arg contact_force_topic)"/>
+	    <arg name="grasp_force_topic" default="$(arg grasp_force_topic)"/>
 
-        <!-- PARAMS -->
-        <arg name="beta" value="0.004353"/>
-        <arg name="gamma" value="0.2569"/>
-        <arg name="mu" value="0.7"/>
-        <!--<arg name="mu0" default="0.65"/>
-        <arg name="mu1" default="0.58"/> -->
-        <!-- Ottimo ?  -->
-        <!--<arg name="mu0" default="0.63"/>   
-        <arg name="mu1" default="0.55"/>-->
-        <!-- Vera ?  -->
-        <!--<arg name="mu0" default="0.82"/>
-        <arg name="mu1" default="0.77"/> -->
-        <!-- GRIPPER PIV -->
-        <arg name="mu0" default="0.80"/>
-        <arg name="mu1" default="0.76"/>
-        <arg name="kf_frequency" value="2000.0"/>
-        <arg name="Io" value="7.3573e-04"/>
-        <arg name="Mo" value="0.35"/>
-        <arg name="b" value="0.011"/>
+	    <!-- Pubs -->
+	    <arg name="desired_grasp_force_topic" default="$(arg force_command_topic)"/>
+	    <arg name="ls_0_topic" default="ls_0"/>
+	    <arg name="ls_1_topic" default="ls_1"/>
+	    <arg name="ls_combined_topic" default="ls_combined"/>
+	    <arg name="kf_extimated_velocity_topic" default="extimated_velocity"/>
+	    <arg name="kf_extimated_state_topic" default="extimated_state"/>
+	    <arg name="kf_extimated_measure_topic" default="extimated_measure"/>
+	    <arg name="dynamic_force_topic" default="dynamic_force"/>
+
+	    <!-- Srv Client -->
+	    <arg name="home_gripper_service" default="$(arg raw_homing_gripper_srv)"/>
+	    <arg name="force_control_set_running_service" default="$(arg force_control_set_running_service)"/>
+
+	    <!-- Srv Server -->
+	    <arg name="ls_0_change_params_service" default="ls_0/change_params"/>
+	    <arg name="ls_1_change_params_service" default="ls_1/change_params"/>
+	    <arg name="kf_set_running_service" default="kf/set_running"/>
+	    <arg name="dyn_set_running_service" default="dyn_controller/set_running"/>	
+
+	    <!-- Action Client -->
+	    <arg name="compute_bias_0_action" default="$(arg name_space_finger0)/$(arg compute_bias_action)"/>
+	    <arg name="compute_bias_1_action" default="$(arg name_space_finger1)/$(arg compute_bias_action)"/>	
+
+	    <!-- Action Server -->
+	    <arg name="home_gripper_action" default="home_gripper_action"/>
+	    <arg name="compute_bias_action" default="$(arg compute_bias_action)"/>
+	    <arg name="grasp_action" default="grasp_action"/>
+	    <arg name="slipping_control_action" default="slipping_control_action"/>
+
+        <!-- PARAMS COMPUTE_LS -->
+        <arg name="delta" default="0.004353"/>
+        <arg name="gamma" default="0.2569"/>
+        <arg name="mu" default="0.8"/>
+        <arg name="k" default="4.0"/>
         <!--
-        <arg name="beta_o2" value="0.002"/>
-        <arg name="beta_o3" value="0.002"/>
+        <arg name="delta_0" default="$(arg delta)"/>
+        <arg name="gamma_0" default="$(arg gamma)"/>
+        <arg name="mu_0" default="$(arg mu)"/>
+        <arg name="k_0" default="$(arg k)"/>
+
+        <arg name="delta_1" default="$(arg delta)"/>
+        <arg name="gamma_1" default="$(arg gamma)"/>
+        <arg name="mu_1" default="$(arg mu)"/>
+        <arg name="k_1" default="$(arg k)"/>
         -->
-        <arg name="beta_o2" value="0.02"/>
-        <arg name="beta_o3" value="0.02"/>
-        <arg name="sigma_02" value="5.0E1"/>
-        <arg name="sigma_03" value="5.0E2"/>
-        <arg name="dyn_p_gain" value="10.0"/>
-        <arg name="dyn_i_gain" value="800.0"/>
-        <arg name="dyn_integrator_dc_gain" value="1.0E1"/>
-        <arg name="dyn_frequency" value="2000.0"/>
-        <arg name="dyn_input_saturation" value="3.0E-2"/>
-        <arg name="dyn_itimer_max" value="2.0"/>
-        <arg name="grasp_force_to_apply_before_contact" value="1.7"/>
-        <arg name="dyn_cut_freq" value="0.05"/>
-        <arg name="grasp_contact_force_thr" value="0.8"/>
-        <arg name="grasp_force_time_ratio" value="2.0"/> <!-- [N/s] -->
-        <arg name="grasp_frequency" value="500.0"/>
-        <arg name="pivoting_max_time" value="120.0"/>
-        <arg name="pivoting_tau_thr" value="2.0E-3"/>
-        <arg name="pivoting_gain" value="75.0"/>
-        <arg name="pivoting_frequency" value="500.0"/>
-        <arg name="smart_remove_fnd_rate" value="200.0"/>
-        <arg name="smart_remove_fnd_time_const" value="1.0"/>
 
-        <!-- Trigger -->
-        <arg name="fix_sign_taun_trigger" value="0.005"/>
-        <arg name="compute_ls_trigger_taun_min" value="0.005"/>
-        <arg name="compute_ls_trigger_taun_max" value="0.010"/>
-        <arg name="compute_ls_trigger_taun_when_trigger_active" value="0.002"/>
-        <arg name="compute_static_trigger_taun_min" value="0.002"/>
-        <arg name="compute_static_trigger_taun_max" value="0.010"/>
-        <arg name="compute_static_trigger_taun_when_trigger_active" value="0.0005"/>
+	    <arg name="max_cor_tilde" default="100.0"/>
 
-        <!--FILTER -->
-        <arg name="cut_freq_filter_cor" value="10.0"/>
-        <arg name="rate_filter_cor" value="100.0"/>
+        <!-- PARAMS Observer -->
+        <arg name="kf_frequency" default="2000.0"/>
+        <arg name="Io" default="7.4013e-04"/>
+        <arg name="Mo" default="0.350"/>
+        <arg name="b" default="0.0"/>
+        <arg name="beta_o2" default="0.02"/>
+        <!--<arg name="beta_o3" default="$(arg beta_o2)"/>-->
+        <arg name="sigma_02" default="50.0"/>
+        <!--<arg name="sigma_03" default="$(arg sigma_02)"/>-->
 
-        <!-- Cor_tilde -->
-        <arg name="max_cor_tilde" value="5.0"/>
+	    <arg name="kf_min_gen_max_force" default="0.001"/>	
 
-        <!-- FindZero -> Fn_min -->
-        <arg name="default_fn_min" default="20.0"/>
-        <arg name="newton_gain" default="0.3"/>
-        <arg name="newton_cost_tol" default="1.0E-6"/>
-        <arg name="newton_lambda" default="1.0E-10"/>
-        <arg name="newton_max_iter" default="1500"/>
+        <!-- PARAMS Dyn Controller -->
+        <arg name="dyn_frequency" default="2000.0"/>
+        <arg name="dyn_i_gain" default="50.0"/>
+        <arg name="dyn_p_gain" default="13.0"/>
+        <arg name="dyn_integrator_dc_gain" default="35.0"/>
 
-        <!-- Secure vars -->
-        <arg name="compute_ls_min_fn_min" value="0.0"/>
-        <arg name="compute_static_min_fn_min" value="1.0"/>
-        <arg name="compute_static_secure_gain" value="1.0"/>
-        <arg name="kf_min_gen_max_force" value="0.001"/>
-
-        <!-- Sub -->
-        <arg name="contact_force0_topic" value="/$(arg gripper_model)/$(arg name_space_finger0)/$(arg contact_force_topic)"/>
-        <arg name="contact_force1_topic" value="/$(arg gripper_model)/$(arg name_space_finger1)/$(arg contact_force_topic)"/>
-        <arg name="grasp_force_topic" value="$(arg grasp_force_topic)"/>
-        <arg name="total_wrench_topic" value="$(arg wrench_topic)"/>
-
-        <!-- Pubs -->
-        <arg name="cor_topic" value="cor"/>
-        <arg name="min_force_topic" value="min_force"/>
-        <arg name="max_force_topic" value="max_force"/>
-        <arg name="generalized_force_topic" value="generalized_force"/>
-        <arg name="static_force_topic" value="static_force"/>
-        <arg name="kf_extimated_velocity_topic" value="extimated_velocity"/>
-        <arg name="kf_extimated_state_topic" value="extimated_state_topic"/>
-        <arg name="kf_extimated_measure_topic" value="extimated_measure_topic"/>
-        <arg name="dynamic_force_topic" value="dynamic_force"/>
-        <arg name="force_command_topic" value="$(arg force_command_topic)"/>
-
-        <!-- services as client -->
-        <arg name="pause_force_control_service" value="$(arg pause_force_control_srv)"/>
-        <arg name="homing_gripper_service" value="$(arg raw_homing_gripper_srv)"/>
-        <arg name="remove_bias_0_service" value="$(arg name_space_finger0)/$(arg remove_bias_srv)"/>
-        <arg name="remove_bias_1_service" value="$(arg name_space_finger1)/$(arg remove_bias_srv)"/>	
-            
-        <!-- services as server -->
-        <arg name="smart_remove_bias_service" value="remove_bias"/>
-        <arg name="grasp_service" value="grasp"/>
-        <arg name="apply_force_service" value="apply_force"/>
-        <arg name="apply_fns_service" value="apply_fns"/>
-        <arg name="apply_fnd_service" value="apply_fnd"/>
-        <arg name="smart_homing_service" value="smart_homing"/>
-        <arg name="pivoting_service" value="pivoting"/>
+        <!-- PARAMS Slipping Control Action Server -->
+        <arg name="as_rate" default="500.0"/>
+        <arg name="contact_force_thr" default="0.8"/>
+        <arg name="before_contact_force" default="1.7"/>
 
     </include>
 

@@ -1,256 +1,163 @@
 <launch>
 
-	<!-- Settings -->
-	<arg name="ns_static_control0" default="static_control_0"/>
-	<arg name="ns_static_control1" default="static_control_1"/>
-
-	<!-- PARAMS -->
-    <arg name="beta" default="0.00349"/>
-    <arg name="gamma" default="0.109"/>
-    <arg name="mu" default="1.0"/>
-	<arg name="mu0" default="$(arg mu)"/>
-	<arg name="mu1" default="$(arg mu)"/>
-	<arg name="kf_frequency" default="2000.0"/>
-	<arg name="Io" default="1.4E-3"/>
-	<arg name="Mo" default="0.35"/>
-	<arg name="b" default="0.0"/>
-	<arg name="beta_o2" default="0.04"/>
-	<arg name="beta_o3" default="0.04"/>
-	<arg name="sigma_02" default="1.0E2"/>
-	<arg name="sigma_03" default="$(arg sigma_02)"/>
-	<arg name="dyn_p_gain" default="20.0"/>
-	<arg name="dyn_i_gain" default="20.0"/>
-	<arg name="dyn_integrator_dc_gain" default="1E2"/>
-	<arg name="dyn_frequency" default="2000.0"/>
-	<arg name="dyn_input_saturation" default="3.0E-2"/>
-	<arg name="dyn_itimer_max" default="2.0"/>
-	<arg name="dyn_cut_freq" default="0.05"/>
-	<arg name="grasp_force_to_apply_before_contact" default="10.0"/>
-	<arg name="grasp_contact_force_thr" default="0.8"/>
-	<arg name="grasp_force_time_ratio" default="3.0"/> <!-- [N/s] -->
-	<arg name="grasp_frequency" default="500.0"/>
-	<arg name="pivoting_max_time" default="120.0"/>
-	<arg name="pivoting_tau_thr" default="2.0E-3"/>
-	<arg name="pivoting_gain" default="75.0"/>
-	<arg name="pivoting_frequency" default="500.0"/>
-	<arg name="smart_remove_fnd_rate" default="200.0"/>
-	<arg name="smart_remove_fnd_time_const" default="1.0"/>
-
-	<!--FILTER -->
-	<arg name="cut_freq_filter_cor" default="50.0"/>
-	<arg name="rate_filter_cor" default="300.0"/>
-
-	<!-- Trigger -->
-	<arg name="fix_sign_taun_trigger" default="0.002"/>
-	<arg name="compute_ls_trigger_taun_min" default="0.002"/>
-    <arg name="compute_ls_trigger_taun_max" default="0.010"/>
-    <arg name="compute_ls_trigger_taun_when_trigger_active" default="$(arg compute_ls_trigger_taun_min)"/>
-    <arg name="compute_static_trigger_taun_min" default="0.002"/>
-    <arg name="compute_static_trigger_taun_max" default="0.010"/>
-    <arg name="compute_static_trigger_taun_when_trigger_active" default="0.0005"/>
-
-	<!-- Cor_tilde -->
-	<arg name="max_cor_tilde" default="0.8"/>
-
-	<!-- FindZero -> Fn_min -->
-	<arg name="default_fn_min" default="20.0"/>
-    <arg name="newton_gain" default="0.3"/>
-    <arg name="newton_cost_tol" default="1.0E-6"/>
-    <arg name="newton_lambda" default="1.0E-10"/>
-    <arg name="newton_max_iter" default="1500"/>
-
-	<!-- Secure vars -->
-    <arg name="compute_ls_min_fn_min" default="0.0"/>
-    <arg name="compute_static_min_fn_min" default="2.0"/>
-    <arg name="compute_static_secure_gain" default="1.2"/>
-	<arg name="kf_min_gen_max_force" default="0.001"/>
-
-	<!-- Sub -->
-    <arg name="contact_force0_topic" default="contact_force"/>
-	<arg name="contact_force1_topic" default="$(arg contact_force0_topic)"/>
+	<!-- Subs -->
+	<arg name="contact_force_0_topic" default="finger0/contact_force"/>
+	<arg name="contact_force_1_topic" default="finger1/contact_force"/>
 	<arg name="grasp_force_topic" default="grasp_force"/>
-	<arg name="total_wrench_topic" default="wrench"/>
 
 	<!-- Pubs -->
-    <arg name="cor_topic" default="cor"/>
-    <arg name="min_force_topic" default="min_force"/>
-    <arg name="max_force_topic" default="max_force"/>
-    <arg name="generalized_force_topic" default="generalized_force"/>
-    <arg name="static_force_topic" default="static_force"/>
+	<arg name="desired_grasp_force_topic" default="desired_grasp_force"/>
+	<arg name="ls_0_topic" default="ls_0"/>
+	<arg name="ls_1_topic" default="ls_1"/>
+	<arg name="ls_combined_topic" default="ls_combined"/>
 	<arg name="kf_extimated_velocity_topic" default="extimated_velocity"/>
-	<arg name="kf_extimated_state_topic" default="extimated_state_topic"/>
-	<arg name="kf_extimated_measure_topic" default="extimated_measure_topic"/>
+	<arg name="kf_extimated_state_topic" default="extimated_state"/>
+	<arg name="kf_extimated_measure_topic" default="extimated_measure"/>
 	<arg name="dynamic_force_topic" default="dynamic_force"/>
-	<arg name="force_command_topic" default="force_command"/>
 
-	<!-- services as client -->
-	<arg name="pause_force_control_service" default="force_control/pause"/>
-	<arg name="homing_gripper_service" default="gripper/homing"/>
-	<arg name="remove_bias_0_service" default="$(arg ns_static_control0)/remove_bias"/>
-	<arg name="remove_bias_1_service" default="$(arg ns_static_control1)/remove_bias"/>	
-		
-	<!-- services as server -->
-	<arg name="smart_remove_bias_service" default="remove_bias"/>
-	<arg name="grasp_service" default="grasp"/>
-	<arg name="apply_force_service" default="apply_force"/>
-	<arg name="apply_fns_service" default="apply_fns"/>
-	<arg name="apply_fnd_service" default="apply_fnd"/>
-	<arg name="smart_homing_service" default="smart_homing"/>
-	<arg name="pivoting_service" default="pivoting"/>
+	<!-- Srv Client -->
+	<arg name="home_gripper_service" default="home_gripper_service"/>
+	<arg name="force_control_set_running_service" default="force_control/set_running"/>
+
+	<!-- Srv Server -->
+	<arg name="ls_0_change_params_service" default="ls_0/change_params"/>
+	<arg name="ls_1_change_params_service" default="ls_1/change_params"/>
+	<arg name="kf_set_running_service" default="kf/set_running"/>
+	<arg name="dyn_set_running_service" default="dyn_controller/set_running"/>	
+
+	<!-- Action Client -->
+	<arg name="compute_bias_0_action" default="finger0/compute_bias"/>
+	<arg name="compute_bias_1_action" default="finger1/compute_bias"/>	
+
+	<!-- Action Server -->
+	<arg name="home_gripper_action" default="home_gripper_action"/>
+	<arg name="compute_bias_action" default="compute_bias_action"/>
+	<arg name="grasp_action" default="grasp_action"/>
+	<arg name="slipping_control_action" default="slipping_control_action"/>
+
+	<!-- PARAMS COMPUTE_LS -->
+	<arg name="delta" default="0.004353"/>
+	<arg name="gamma" default="0.2569"/>
+	<arg name="mu" default="0.8"/>
+	<arg name="k" default="4.0"/>
+
+	<arg name="delta_0" default="$(arg delta)"/>
+	<arg name="gamma_0" default="$(arg gamma)"/>
+	<arg name="mu_0" default="$(arg mu)"/>
+	<arg name="k_0" default="$(arg k)"/>
+
+	<arg name="delta_1" default="$(arg delta)"/>
+	<arg name="gamma_1" default="$(arg gamma)"/>
+	<arg name="mu_1" default="$(arg mu)"/>
+	<arg name="k_1" default="$(arg k)"/>
+
+	<arg name="max_cor_tilde" default="100.0"/>
+
+	<!-- PARAMS Observer -->
+	<arg name="kf_frequency" default="2000.0"/>
+	<arg name="Io" default="7.4013e-04"/>
+	<arg name="Mo" default="0.350"/>
+	<arg name="b" default="0.0"/>
+	<arg name="beta_o2" default="0.02"/>
+	<arg name="beta_o3" default="$(arg beta_o2)"/>
+	<arg name="sigma_02" default="50.0"/>
+	<arg name="sigma_03" default="$(arg sigma_02)"/>
+
+	<arg name="kf_min_gen_max_force" default="0.001"/>	
+
+	<!-- PARAMS Dyn Controller -->
+	<arg name="dyn_frequency" default="2000.0"/>
+	<arg name="dyn_i_gain" default="50.0"/>
+	<arg name="dyn_p_gain" default="13.0"/>
+	<arg name="dyn_integrator_dc_gain" default="35.0"/>
+
+	<!-- PARAMS Slipping Control Action Server -->
+	<arg name="as_rate" default="500.0"/>
+	<arg name="contact_force_thr" default="0.8"/>
+	<arg name="before_contact_force" default="1.7"/>
 
 <!--///-->
 <!--FIX SIGN-->
+
 	<node name="contact_force_fix" pkg="slipping_control" type="contact_force_fix" output="screen">
 
-		<!-- PARAMS -->
-		<param name="taun_trigger" value="$(arg fix_sign_taun_trigger)"/>
-
         <!-- Sub -->
-        <param name="input_topic0" value="$(arg contact_force0_topic)/filter"/>
-        <param name="input_topic1" value="$(arg contact_force1_topic)/filter"/>
+        <param name="input_topic0" value="$(arg contact_force_0_topic)"/>
+        <param name="input_topic1" value="$(arg contact_force_1_topic)"/>
 
         <!-- Pubs -->
-        <param name="output_topic0" value="$(arg contact_force0_topic)/fix"/>
-		<param name="output_topic1" value="$(arg contact_force1_topic)/fix"/>
-		<param name="output_sign_topic" value="tau_sign"/>
+        <param name="output_topic0" value="$(arg contact_force_0_topic)/fix"/>
+		<param name="output_topic1" value="$(arg contact_force_1_topic)/fix"/>
 
     </node>
 
 <!--///-->
-	<group ns="$(arg ns_static_control0)">
-		<include file="$(find slipping_control)/launch/ls_control.launch">
+<!--LS0-->
 
-			<arg name="sign_correction" value="1.0"/>
+	<node name="compute_ls_0" pkg="slipping_control" type="compute_ls" output="screen">
 
-			<!-- PARAMS -->
-			<arg name="beta" value="$(arg beta)"/>
-			<arg name="gamma" value="$(arg gamma)"/>
-			<arg name="mu" value="$(arg mu0)"/>
+		<!-- PARAMS -->
+        <param name="delta" value="$(arg delta_0)"/>
+        <param name="gamma" value="$(arg gamma_0)"/>
+        <param name="mu" value="$(arg mu_0)"/>
+		<param name="k" value="$(arg k_0)"/>
 
-			<!-- Trigger -->
-			<arg name="compute_ls_trigger_taun_min" value="$(arg compute_ls_trigger_taun_min)"/>
-			<arg name="compute_ls_trigger_taun_max" value="$(arg compute_ls_trigger_taun_max)"/>
-			<arg name="compute_ls_trigger_taun_when_trigger_active" value="$(arg compute_ls_trigger_taun_when_trigger_active)"/>
-			<arg name="compute_static_trigger_taun_min" value="$(arg compute_static_trigger_taun_min)"/>
-			<arg name="compute_static_trigger_taun_max" value="$(arg compute_static_trigger_taun_max)"/>
-			<arg name="compute_static_trigger_taun_when_trigger_active" value="$(arg compute_static_trigger_taun_when_trigger_active)"/>
+		<!-- Misc Vars -->
+		<param name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
 
-			<!--FILTER -->
-			<arg name="cut_freq_filter_cor" value="$(arg cut_freq_filter_cor)"/>
-			<arg name="rate_filter_cor" value="$(arg rate_filter_cor)"/>
+		<!-- Sub -->
+		<param name="contact_force_topic" value="$(arg contact_force_0_topic)/fix"/>
 
-			<!-- Cor_tilde -->
-			<arg name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
+		 <!-- Pub -->
+		 <param name="ls_topic" value="$(arg ls_0_topic)"/>
 
-			<!-- FindZero -> Fn_min -->
-			<arg name="default_fn_min" value="$(arg default_fn_min)"/>
-			<arg name="newton_gain" value="$(arg newton_gain)"/>
-			<arg name="newton_cost_tol" value="$(arg newton_cost_tol)"/>
-			<arg name="newton_lambda" value="$(arg newton_lambda)"/>
-			<arg name="newton_max_iter" value="$(arg newton_max_iter)"/>
+		 <!-- Srv Server -->
+		 <param name="service_ch_params" value="$(arg ls_0_change_params_service)"/>
 
-			<!-- Secure vars -->
-			<arg name="compute_ls_min_fn_min" value="$(arg compute_ls_min_fn_min)"/>
-			<arg name="compute_static_min_fn_min" value="$(eval arg('compute_static_min_fn_min') / 2.0)"/>
-			<arg name="compute_static_secure_gain" value="$(arg compute_static_secure_gain)"/>
+	</node>
 
-			<!-- Sub -->
-			<arg name="compute_ls_contact_force_topic" value="$(arg contact_force0_topic)"/>
-			<arg name="compute_ls_contact_force_topic_filter" default="$(arg contact_force0_topic)/fix"/>
-			<arg name="compute_static_contact_force_topic" value="$(arg contact_force0_topic)/filter"/>
-
-			<!-- Pubs -->
-			<arg name="cor_topic" value="$(arg cor_topic)"/>
-			<arg name="min_force_topic" value="$(arg min_force_topic)"/>
-			<arg name="max_force_topic" value="$(arg max_force_topic)"/>
-			<arg name="generalized_force_topic" value="$(arg generalized_force_topic)"/>
-			<arg name="static_force_topic" value="$(arg static_force_topic)"/>
-
-			<!-- Srv -->
-			<arg name="compute_static_pause_service" value="compute_static/pause"/>
-			<arg name="compute_static_control_rotation_service" value="compute_static/control_rotation"/>
-
-		</include>
-	</group>
 <!--///-->
-	<group ns="$(arg ns_static_control1)">
-		<include file="$(find slipping_control)/launch/ls_control.launch">
+<!--LS1-->
 
-			<arg name="sign_correction" value="-1.0"/>
+	<node name="compute_ls_1" pkg="slipping_control" type="compute_ls" output="screen">
 
-			<!-- PARAMS -->
-			<arg name="beta" value="$(arg beta)"/>
-			<arg name="gamma" value="$(arg gamma)"/>
-			<arg name="mu" value="$(arg mu1)"/>
+		<!-- PARAMS -->
+        <param name="delta" value="$(arg delta_1)"/>
+        <param name="gamma" value="$(arg gamma_1)"/>
+        <param name="mu" value="$(arg mu_1)"/>
+		<param name="k" value="$(arg k_1)"/>
 
-			<!-- Trigger -->
-			<arg name="compute_ls_trigger_taun_min" value="$(arg compute_ls_trigger_taun_min)"/>
-			<arg name="compute_ls_trigger_taun_max" value="$(arg compute_ls_trigger_taun_max)"/>
-			<arg name="compute_ls_trigger_taun_when_trigger_active" value="$(arg compute_ls_trigger_taun_when_trigger_active)"/>
-			<arg name="compute_static_trigger_taun_min" value="$(arg compute_static_trigger_taun_min)"/>
-			<arg name="compute_static_trigger_taun_max" value="$(arg compute_static_trigger_taun_max)"/>
-			<arg name="compute_static_trigger_taun_when_trigger_active" value="$(arg compute_static_trigger_taun_when_trigger_active)"/>
+		<!-- Misc Vars -->
+		<param name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
 
-			<!--FILTER -->
-			<arg name="cut_freq_filter_cor" value="$(arg cut_freq_filter_cor)"/>
-			<arg name="rate_filter_cor" value="$(arg rate_filter_cor)"/>
+		<!-- Sub -->
+		<param name="contact_force_topic" value="$(arg contact_force_1_topic)/fix"/>
 
-			<!-- Cor_tilde -->
-			<arg name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
+		 <!-- Pub -->
+		 <param name="ls_topic" value="$(arg ls_1_topic)"/>
 
-			<!-- FindZero -> Fn_min -->
-			<arg name="default_fn_min" value="$(arg default_fn_min)"/>
-			<arg name="newton_gain" value="$(arg newton_gain)"/>
-			<arg name="newton_cost_tol" value="$(arg newton_cost_tol)"/>
-			<arg name="newton_lambda" value="$(arg newton_lambda)"/>
-			<arg name="newton_max_iter" value="$(arg newton_max_iter)"/>
+		 <!-- Srv Server -->
+		 <param name="service_ch_params" value="$(arg ls_1_change_params_service)"/>
 
-			<!-- Secure vars -->
-			<arg name="compute_ls_min_fn_min" value="$(arg compute_ls_min_fn_min)"/>
-			<arg name="compute_static_min_fn_min" value="$(eval arg('compute_static_min_fn_min') / 2.0)"/>
-			<arg name="compute_static_secure_gain" value="$(arg compute_static_secure_gain)"/>
+	</node>
 
-			<!-- Sub -->
-			<arg name="compute_ls_contact_force_topic" value="$(arg contact_force1_topic)"/>
-			<arg name="compute_ls_contact_force_topic_filter" default="$(arg contact_force1_topic)/fix"/>
-			<arg name="compute_static_contact_force_topic" value="$(arg contact_force1_topic)/filter"/>
-
-			<!-- Pubs -->
-			<arg name="cor_topic" value="$(arg cor_topic)"/>
-			<arg name="min_force_topic" value="$(arg min_force_topic)"/>
-			<arg name="max_force_topic" value="$(arg max_force_topic)"/>
-			<arg name="generalized_force_topic" value="$(arg generalized_force_topic)"/>
-			<arg name="static_force_topic" value="$(arg static_force_topic)"/>
-
-			<!-- Srv -->
-			<arg name="compute_static_pause_service" value="compute_static/pause"/>
-			<arg name="compute_static_control_rotation_service" value="compute_static/control_rotation"/>
-
-		</include>
-	</group>
 <!--///-->
+<!--Combine Ls-->
+
 	<node name="static_combine" pkg="slipping_control" type="static_combine" output="screen">
 
-        <!-- Sub -->
-        <param name="in_topic0" value="$(arg ns_static_control0)/$(arg static_force_topic)"/>
-        <param name="in_topic1" value="$(arg ns_static_control1)/$(arg static_force_topic)"/>
+		<!-- Subs -->
+        <param name="in_topic0" value="$(arg ls_0_topic)"/>
+        <param name="in_topic1" value="$(arg ls_1_topic)"/>
 
-        <!-- Pubs -->
-        <param name="out_topic" value="$(arg static_force_topic)"/>
-
-        <!-- Srv -->
-        <param name="pause_service" value="compute_static/pause"/>
-        <param name="control_rotation_service" value="compute_static/control_rotation"/>
-
-        <!-- Srv Client -->
-        <param name="pause_client0" value="$(arg ns_static_control0)/compute_static/pause"/>
-        <param name="pause_client1" value="$(arg ns_static_control1)/compute_static/pause"/>
-        <param name="control_rotation_client0" value="$(arg ns_static_control0)/compute_static/control_rotation"/>
-        <param name="control_rotation_client1" value="$(arg ns_static_control1)/compute_static/control_rotation"/>
+		<!-- Pub -->
+        <param name="out_topic" value="$(arg ls_combined_topic)"/>
 
     </node>
+
 <!--///-->
-<!--///-->
+<!--Observer-->
+
 	<node name="kalman_filter_velocity" pkg="slipping_control" type="kalman_filter_velocity" output="screen">
 
 		<!--Params-->
@@ -263,133 +170,79 @@
 		<param name="sigma_02" type="double" value="$(arg sigma_02)"/>
 		<param name="sigma_03" type="double" value="$(arg sigma_03)"/>
 
-		<!-- Security -->
+		<!-- Misc Vars -->
 		<param name="min_gen_max_force" type="double" value="$(arg kf_min_gen_max_force)"/>
 
-		<!-- Subs -->
-		<param name="cor0_topic" value="$(arg ns_static_control0)/$(arg cor_topic)/filter"/>
-		<param name="cor1_topic" value="$(arg ns_static_control1)/$(arg cor_topic)/filter"/>
-		<param name="max_gen_force0_topic" value="$(arg ns_static_control0)/$(arg max_force_topic)"/>
-		<param name="max_gen_force1_topic" value="$(arg ns_static_control1)/$(arg max_force_topic)"/>
-		<param name="gen_force0_topic" value="$(arg ns_static_control0)/$(arg generalized_force_topic)"/>
-		<param name="gen_force1_topic" value="$(arg ns_static_control1)/$(arg generalized_force_topic)"/>
+		<!-- Sub -->
+		<param name="ls_combined_tipic" value="$(arg ls_combined_topic)"/>
 
 		<!-- Pubs -->
 		<param name="extimated_velocity_topic" value="$(arg kf_extimated_velocity_topic)"/>
 		<param name="extimated_state_topic" value="$(arg kf_extimated_state_topic)"/>
 		<param name="extimated_measure_topic" value="$(arg kf_extimated_measure_topic)"/>
 
-		<!-- Srv -->
-		<param name="pause_service" value="kf/pause"/>
-
-		<!-- NEW PARAMS -->
-		<param name="mu0" value="$(arg mu0)"/>
-		<param name="mu1" value="$(arg mu1)"/>
-
-		<param name="contact_force0_topic" value="$(arg contact_force0_topic)"/>
-		<param name="contact_force1_topic" value="$(arg contact_force1_topic)"/>
+		<!-- Srv Server -->
+		<param name="set_running_service" value="$(arg kf_set_running_service)"/>
 
 	</node>
+
 <!--///-->
-<!--///-->
+<!--Dyn Controller-->
+
 	<node name="dynamic_controller" pkg="slipping_control" type="dynamic_controller" output="screen">
 
-		<!-- Params -->
-		<param name="integral_action" type="bool" value="true"/>
-		<param name="p_gain" value="$(arg dyn_p_gain)"/>
-		<param name="i_gain" value="$(arg dyn_i_gain)"/>
-		<param name="integrator_dc_gain" value="$(arg dyn_integrator_dc_gain)"/>
+		<!--Params-->
 		<param name="hz" value="$(arg dyn_frequency)"/>
-		<param name="input_saturation" value="$(arg dyn_input_saturation)"/>
-		<param name="timer_max" value="$(arg dyn_itimer_max)"/>
-		<param name="cut_freq" value="$(arg dyn_cut_freq)"/>
+		<param name="i_gain" value="$(arg dyn_i_gain)"/>
+		<param name="p_gain" value="$(arg dyn_p_gain)"/>
+		<param name="integrator_dc_gain" value="$(arg dyn_integrator_dc_gain)"/>
 
-		<!-- Subs -->
+		<!-- Sub -->
 		<param name="in_topic" value="$(arg kf_extimated_velocity_topic)"/>
 
-		<!-- Pubs -->
+		<!-- Pub -->
 		<param name="out_topic" value="$(arg dynamic_force_topic)"/>
-    
-		<!-- Srv -->
-		<param name="pause_service" value="dynamic_control/pause"/>
+
+		<!-- Srv Server -->
+		<param name="set_running_service" value="$(arg dyn_set_running_service)"/>
+
+	</node>
+
+<!--///-->
+<!--Slipping Control AS-->
+
+	<node name="slipping_control_as" pkg="slipping_control" type="slipping_control_as" output="screen">
+
+		<!--Params-->
+		<param name="rate" value="$(arg as_rate)"/>
+		<param name="contact_force_thr" value="$(arg contact_force_thr)"/>
+		<param name="before_contact_force" value="$(arg before_contact_force)"/>
+
+		<!-- Subs -->
+		<param name="topic_grasp_force" value="$(arg grasp_force_topic)"/>
+		<param name="topic_ls_combined" value="$(arg ls_combined_topic)"/>
+		<param name="topic_dyn_force" value="$(arg dynamic_force_topic)"/>
+		<param name="topic_force0" value="$(arg contact_force_0_topic)"/>
+		<param name="topic_force1" value="$(arg contact_force_1_topic)"/>
+
+		<!-- Pub -->
+		<param name="topic_desired_grasp_force" value="$(arg desired_grasp_force_topic)"/>
 
 		<!-- Srv Client -->
-        <param name="pause_kf_service" value="kf/pause"/>
+		<param name="sc_home_gripper" value="$(arg home_gripper_service)"/>
+		<param name="sc_force_control_set_running" value="$(arg force_control_set_running_service)"/>
+		<param name="sc_observer_set_running" value="$(arg kf_set_running_service)"/>
+		<param name="sc_dyn_controller_set_running" value="$(arg dyn_set_running_service)"/>
 
-	</node>
-<!--///-->
-<!--///-->
-	<node name="grasping" pkg="slipping_control" type="grasping" output="screen">
+		<!-- Action Client -->
+		<param name="ac_compute_bias_0" value="$(arg compute_bias_0_action)"/>
+		<param name="ac_compute_bias_1" value="$(arg compute_bias_1_action)"/>
 
-		<!-- Params -->
-		<param name="contact_fn_force" value="$(arg grasp_force_to_apply_before_contact)"/>
-		<param name="contact_force_thr" value="$(arg grasp_contact_force_thr)"/>
-		<param name="grasp_force_time_ratio" value="$(arg grasp_force_time_ratio)"/> <!-- [N/s] -->
-		<param name="grasp_rate" value="$(arg grasp_frequency)"/>
-
-		<!-- Subs -->
-		<param name="topic_grasp_force" type="string" value="$(arg grasp_force_topic)"/>
-		<param name="topic_wrench" type="string" value="$(arg total_wrench_topic)"/>
-
-		<!-- Action server -->
-		<param name="grasping_action_server" type="string" value="grasp_action"/>
-
-	</node>
-<!--///-->
-<!--///-->
-	<node name="pivoting" pkg="slipping_control" type="pivoting" output="screen">
-
-		<!-- Params -->
-		<param name="mu" value="$(arg mu)"/>
-		<param name="max_time" value="$(arg pivoting_max_time)"/>
-		<param name="tau_thr" value="$(arg pivoting_tau_thr)"/>
-		<param name="gain" value="$(arg pivoting_gain)"/>
-		<param name="rate" value="$(arg pivoting_frequency)"/>
-
-		<!-- Subs -->
-		<param name="topic_grasp_force" type="string" value="$(arg grasp_force_topic)"/>
-		<param name="topic_wrench" type="string" value="$(arg total_wrench_topic)"/>
-
-		<!-- Action server -->
-		<param name="pivoting_action" type="string" value="pivoting_action"/>
-
-	</node>
-<!--///-->
-<!--///-->
-	<node name="smart_control" pkg="slipping_control" type="smart_control" output="screen">
-
-		<!-- Params -->
-		<param name="remove_fnd_rate" value="$(arg smart_remove_fnd_rate)"/>
-		<param name="remove_fnd_time_const" value="$(arg smart_remove_fnd_time_const)"/>
-
-		<!-- in topics --> 
-		<param name="fns_topic" type="string" value="$(arg static_force_topic)"/>
-		<param name="fnd_topic" type="string" value="$(arg dynamic_force_topic)"/>
-
-		<!-- out topics --> 
-		<param name="force_command_topic" type="string" value="$(arg force_command_topic)"/>
-
-		<!-- services as client -->
-		<param name="pause_static_service" type="string" value="compute_static/pause"/>
-		<param name="fns_params_service" type="string" value="compute_static/control_rotation"/>
-		<param name="pause_dyn_controller_service" type="string" value="dynamic_control/pause"/>
-		<param name="pause_force_service" type="string" value="$(arg pause_force_control_service)"/>
-		<param name="homing_gripper_service" type="string" value="$(arg homing_gripper_service)"/>
-		<param name="remove_bias_0_service" type="string" value="$(arg remove_bias_0_service)"/>
-		<param name="remove_bias_1_service" type="string" value="$(arg remove_bias_1_service)"/>
-
-		<!-- action_clients -->
-		<param name="action_client_pivoting" type="string" value="pivoting_action"/>
-		<param name="action_client_grasping" type="string" value="grasp_action"/>
-
-		<!-- services as server -->
-		<param name="service_remove_bias" type="string" value="$(arg smart_remove_bias_service)"/>
-		<param name="service_grasp" type="string" value="$(arg grasp_service)"/>
-		<param name="service_apply_force" type="string" value="$(arg apply_force_service)"/>
-		<param name="service_apply_fns" type="string" value="$(arg apply_fns_service)"/>
-		<param name="service_apply_fnd" type="string" value="$(arg apply_fnd_service)"/>
-		<param name="service_homing" type="string" value="$(arg smart_homing_service)"/>
-		<param name="service_pivoting" type="string" value="$(arg pivoting_service)"/>
+		<!-- Action Server -->
+		<param name="as_home_gripper" value="$(arg home_gripper_action)"/>
+		<param name="as_compute_bias" value="$(arg compute_bias_action)"/>
+		<param name="as_grasp" value="$(arg grasp_action)"/>
+		<param name="as_slipping_control" value="$(arg slipping_control_action)"/>
 
 	</node>
 <!--///-->

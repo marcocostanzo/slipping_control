@@ -67,6 +67,8 @@
 
 #define HEADER_PRINT BOLDYELLOW "[" << ros::this_node::getName() << "] " CRESET 
 
+#define HEADER_PRINT_STATE HEADER_PRINT "[" << getStateStr() << "] "
+
 using namespace std;
 
 /*STATES*/
@@ -254,8 +256,11 @@ protected:
 /*************************************
     Action Homing
 ***************************************/
+
 void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPtr &goal )
 {
+
+    cout << HEADER_PRINT_STATE "[Action HomeGripper] Begin." << endl;
 
     bool b_error = false;
 
@@ -271,13 +276,17 @@ void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPt
     b_error = b_error & !observer_set_running(false);
 
     //send homing command
+    cout << HEADER_PRINT_STATE << "[Action HomeGripper] Sending homing command..." << endl;
     if(send_homing_command()){
         //Homing command sent
+        cout << HEADER_PRINT_STATE << "[Action HomeGripper] Homing command sent!" << endl;
 
         //wait for compleate homing
-        cout << HEADER_PRINT BOLDYELLOW "Homing check is open-loop..." CRESET << endl;
+        cout << HEADER_PRINT_STATE BOLDYELLOW "[Action HomeGripper] Homing check is open-loop..." CRESET << endl;
         sleep(1);
         //waitForGripperZeroVel();
+
+        cout << HEADER_PRINT_STATE << "[Action HomeGripper] Homing " GREEN "Done" CRESET << endl;
 
         slipping_control_common::HomeGripperResult result;
         result.success = true;
@@ -290,15 +299,19 @@ void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPt
             result.msg = "OK";
             state_ = STATE_UNDEFINED;
         }
+
+        cout << HEADER_PRINT_STATE << "[Action HomeGripper] " GREEN "Succeeded" CRESET << endl;
         
         home_gripper_as_.setSucceeded(result);
 
     } else {
         //Fail to send homing command
+        cout << HEADER_PRINT_STATE << "[Action HomeGripper] " BOLDRED "Fail to send homing command" CRESET << endl;
         state_ = STATE_UNDEFINED;
         slipping_control_common::HomeGripperResult result;
         result.success = false;
         result.msg = "Fail to send Home command";
+        cout << HEADER_PRINT_STATE << "[Action HomeGripper] " RED "Aborted" CRESET << endl;
         home_gripper_as_.setAborted(result);
     }
 
@@ -347,12 +360,19 @@ bool call_action_compute_bias(  actionlib::SimpleActionClient<sun_tactile_common
 void executeComputeBiasCB( const sun_tactile_common::ComputeBiasGoalConstPtr &goal )
 {
 
+    cout << HEADER_PRINT_STATE "[Action ComputeBias] Called." << endl;
+
     if(state_ == STATE_HOME){
 
         state_ = STATE_REMOVING_BIAS;
+        cout << HEADER_PRINT_STATE "[Action ComputeBias] Begin." << endl;
 
+        cout << HEADER_PRINT_STATE "[Action ComputeBias] Computing Bias of Finger 0..." << endl;
         if(call_action_compute_bias(ac_compute_bias_0, goal, 0)){ //<-- Parallelize in future implementation...
+            cout << HEADER_PRINT_STATE "[Action ComputeBias] Bias of Finger 0 " GREEN "OK" CRESET << endl;
+            cout << HEADER_PRINT_STATE "[Action ComputeBias] Computing Bias of Finger 1..." << endl;
             if(call_action_compute_bias(ac_compute_bias_1, goal, 1)){
+                cout << HEADER_PRINT_STATE "[Action ComputeBias] Bias of Finger 1 " GREEN "OK" CRESET << endl;
                 //Success
                 state_ = STATE_HOME;
                 sun_tactile_common::ComputeBiasResult result;
@@ -360,22 +380,28 @@ void executeComputeBiasCB( const sun_tactile_common::ComputeBiasGoalConstPtr &go
                 result.msg = "OK";
                 result.bias = ac_compute_bias_0.getResult()->bias;
                 result.bias.insert( result.bias.end(), ac_compute_bias_1.getResult()->bias.begin(), ac_compute_bias_1.getResult()->bias.end() );
+                cout << HEADER_PRINT_STATE << "[Action ComputeBias] " GREEN "Succeeded" CRESET << endl;
                 compute_bias_as_.setSucceeded(result);
             } else {
+                cout << HEADER_PRINT_STATE "[Action ComputeBias] Bias of Finger 1 " BOLDRED "ERROR" CRESET << endl;
                 state_ = STATE_UNDEFINED;
+                cout << HEADER_PRINT_STATE << "[Action ComputeBias] " RED "Aborted" CRESET << endl;
             }
         } else {
+            cout << HEADER_PRINT_STATE "[Action ComputeBias] Bias of Finger 0 " BOLDRED "ERROR" CRESET << endl;
             state_ = STATE_UNDEFINED;
+            cout << HEADER_PRINT_STATE << "[Action ComputeBias] " RED "Aborted" CRESET << endl;
         }
 
     } else {
 
         //INVALID START STATE
-        //pErrorInvalidStartState("executeHomeGripperCB()", getStateStr(STATE_HOME));
+        pErrorInvalidStartState("ComputeBias", getStateStr(STATE_HOME));
 
         sun_tactile_common::ComputeBiasResult result;
         result.success = false;
-        result.msg = "Invalid Initial State: " /*+ getStateStr(state_)*/ ;
+        result.msg = "Invalid Initial State: "+ getStateStr(state_);
+        cout << HEADER_PRINT_STATE << "[Action ComputeBias] " RED "Aborted" CRESET << endl;
         compute_bias_as_.setAborted(result);
 
     }
@@ -386,13 +412,13 @@ void executeComputeBiasCB( const sun_tactile_common::ComputeBiasGoalConstPtr &go
 void compute_bias_doneCb(const actionlib::SimpleClientGoalState& action_state,
             const sun_tactile_common::ComputeBiasResultConstPtr& result)
 {
-    cout << HEADER_PRINT GREEN "Remove Bias " << compute_bias_id_ << " DONE! finisched in state " << action_state.toString()  << CRESET << endl;    
+    cout << HEADER_PRINT_STATE GREEN "Remove Bias " << compute_bias_id_ << " DONE! finisched in state " << action_state.toString()  << CRESET << endl;    
 }
 
 // Called once when the goal becomes active
 void compute_bias_activeCb()
 {
-    cout << HEADER_PRINT GREEN "Remove Bias " << compute_bias_id_ << " just went active " << CRESET << endl;
+    cout << HEADER_PRINT_STATE GREEN "Remove Bias " << compute_bias_id_ << " just went active " << CRESET << endl;
 }
 
 // Called every time feedback is received for the goal
@@ -408,6 +434,9 @@ void compute_bias_feedbackCb(const sun_tactile_common::ComputeBiasFeedbackConstP
 bool b_grasping_preemted_ = false;
 void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
 {
+
+    cout << HEADER_PRINT_STATE "[Action Grasp] Called." << endl;
+
     /*CHECK VALID STATE*/
     switch (state_)
     {
@@ -428,7 +457,7 @@ void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
 
         case STATE_GRASPING:{
             //Grasping transition state.. this should not happen
-            cout << HEADER_PRINT BOLDYELLOW "Called executeGraspCB() but state is STATE_GRASPING... this should not happen" CRESET << endl;
+            cout << HEADER_PRINT_STATE "[Action Grasp]" BOLDYELLOW "Called executeGraspCB() but state is STATE_GRASPING... this should not happen" CRESET << endl;
             abortGrasping();
             state_ = STATE_GRASPING;
             b_grasping_preemted_ = false;
@@ -440,7 +469,7 @@ void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
         case STATE_TO_DYN_SLIPPING_AVOIDANCE:
         {
             //Slipping control transition state
-            cout << HEADER_PRINT BOLDYELLOW "Called executeGraspCB() but state is a SlippingControl transition state..." CRESET << endl;
+            cout << HEADER_PRINT_STATE "[Action Grasp]" BOLDYELLOW "Called executeGraspCB() but state is a SlippingControl transition state..." CRESET << endl;
             abortSlippingControl();
             state_ = STATE_GRASPING;
             b_grasping_preemted_ = false;
@@ -449,20 +478,20 @@ void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
 
         default:
         {
-            /*pErrorInvalidStartState("executeGraspCB()",            getStateStr(STATE_HOME) 
-                                                        + "|" + getStateStr(STATE_GRASPED) 
-                                                        + "|" + getStateStr(STATE_GRASPING)
-                                                        + "|" + getStateStr(STATE_FNS)
-                                                        + "|" + getStateStr(STATE_FNS_FND)
-                                                        + "|" + getStateStr(STATE_PIVOTING));
-                                                        */
-            cout << HEADER_PRINT BOLDRED "Invalid initial state in executeGraspCB()" CRESET << endl;
 
-            slipping_control_common::GraspResult result;
-            result.success = false;
-            result.msg = "Invalid Initial State: " /*+ getStateStr(state_)*/ ;
+            pErrorInvalidStartState("Grasp", 
+                                                 getStateStr(STATE_HOME)
+                                                 + "|" + getStateStr(STATE_GRASPED)
+                                                 + "|" + getStateStr(STATE_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_GRASPING)
+                                                 + "|" + getStateStr(STATE_TO_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
+                                    );
 
-            grasp_as_.setAborted(result);
+            graspActionSetAborted( "Invalid Initial State: " + getStateStr(state_) );
 
         }
     }
@@ -473,6 +502,7 @@ void graspActionSetAborted(const string& msg  = string("Aborted") )
     slipping_control_common::GraspResult result;
     result.success = false;
     result.msg = msg;
+    cout << HEADER_PRINT_STATE << "[Action Grasp] " RED "Aborted" CRESET << endl;
     grasp_as_.setAborted(result);
 }
 
@@ -481,6 +511,7 @@ void graspActionSetPreempted(const string& msg = string("Preempted"))
     slipping_control_common::GraspResult result;
     result.success = false;
     result.msg = msg;
+    cout << HEADER_PRINT_STATE << "[Action Grasp] " BOLDYELLOW "Preempted" CRESET << endl;
     grasp_as_.setPreempted(result);
 }
 
@@ -500,6 +531,8 @@ void graspActionPublishForce( double force )
 void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
 {
 
+    cout << HEADER_PRINT_STATE "[Action Grasp] Begin." << endl;
+
     subGraspForce_ = nh_.subscribe(topic_grasp_force_str_, 1, &Slipping_Control_AS::read_grasp_force_cb, this);
     subF0_ = nh_.subscribe(topic_force0_str_, 1, &Slipping_Control_AS::read_force0_cb, this);
     subF1_ = nh_.subscribe(topic_force1_str_, 1, &Slipping_Control_AS::read_force1_cb, this);
@@ -507,7 +540,8 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
 
     //make sure that force control is active
     if( !force_controller_set_running(true) ){
-        cout << HEADER_PRINT << BOLDRED "Error in doGraspingAction() - cannot start force control!" CRESET << endl;
+        cout << HEADER_PRINT_STATE "[Action Grasp] " BOLDRED "Fail to start Force Controller" CRESET "." << endl;
+        state_ = STATE_UNDEFINED;
         graspActionSetAborted("Fail to start force controller");
         subF0_.shutdown();
         subF1_.shutdown();
@@ -516,6 +550,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
     }
 
     //Wait for first sample of forces
+    cout << HEADER_PRINT_STATE "[Action Grasp] Waiting Samples..." << endl;
     b_grasp_force_arrived_ = false;
     b_force0_arrived_ = false;
     b_force1_arrived_ = false;
@@ -529,13 +564,15 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
         }
         ros::spinOnce();
     }
+    cout << HEADER_PRINT_STATE "[Action Grasp] Waiting Samples. OK." << endl;
 
     ros::Rate loop_rate(hz_);
 
     //Check if in contact or not
+    cout << HEADER_PRINT_STATE "[Action Grasp] Check Contact..." << endl;
     if( grasp_force_m_ < goal->desired_force && ( grasp_force_m_ <  CONTACT_FORCE_THR_ || f0_m_ < CONTACT_FORCE_THR_/2.0 || f1_m_ < CONTACT_FORCE_THR_/2.0) ){
         //Not In contact.... do Contact..
-        cout << HEADER_PRINT "Contact..." << endl;
+        cout << HEADER_PRINT_STATE "[Action Grasp] Not In Contact..." << endl;
 
         double contact_thr_force_local = (goal->desired_force < CONTACT_FORCE_THR_) ? goal->desired_force : CONTACT_FORCE_THR_;
 
@@ -563,7 +600,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
     subF1_.shutdown();
 
     //In contact
-    cout << HEADER_PRINT "Contact" GREEN "OK" CRESET << endl;
+    cout << HEADER_PRINT_STATE "[Action Grasp] Contact" GREEN "OK" CRESET << endl;
 
     //Build Ramp
     double initial_force = grasp_force_m_;
@@ -577,7 +614,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
         ramp_total_time = -ramp_total_time;
         force_slope = -force_slope;
     }
-    cout << HEADER_PRINT << "Starting ramp... total time = " << ramp_total_time << endl;
+    cout << HEADER_PRINT_STATE "[Action Grasp] Starting ramp... total time = " << ramp_total_time << endl;
 
     //Do Ramp
     double sec = 0.0;  
@@ -599,16 +636,17 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
     //publish final force (to be sure)
     graspActionPublishForce( goal->desired_force );
 
-    cout << HEADER_PRINT "Ramp " GREEN "OK" CRESET << endl;
+    cout << HEADER_PRINT_STATE "[Action Grasp] Ramp " GREEN "OK" CRESET << endl;
+
+    state_ = STATE_GRASPED;
 
     slipping_control_common::GraspResult result;
     result.success = true;
     result.msg = "OK";
+    cout << HEADER_PRINT_STATE << "[Action Grasp] " GREEN "Succeeded" CRESET << endl;
     grasp_as_.setSucceeded(result);
 
     subGraspForce_.shutdown();
-
-    state_ = STATE_GRASPED;
 
 }
 
@@ -621,6 +659,7 @@ void slippingControlActionSetAborted(const string& msg  = string("Aborted") )
     slipping_control_common::SlippingControlResult result;
     result.success = false;
     result.msg = msg;
+    cout << HEADER_PRINT_STATE << "[Action SlippingControl] " RED "Aborted" CRESET << endl;
     slipping_control_as_.setAborted(result);
 }
 
@@ -629,6 +668,7 @@ void slippingControlActionSetPreempted(const string& msg = string("Preempted"))
     slipping_control_common::SlippingControlResult result;
     result.success = false;
     result.msg = msg;
+    cout << HEADER_PRINT_STATE << "[Action SlippingControl] " BOLDYELLOW "Preempted" CRESET << endl;
     slipping_control_as_.setPreempted(result);
 }
 
@@ -638,17 +678,22 @@ void slippingControlActionSetSucceeded(const string& msg = string("Succeeded"))
     result.success = false;
     result.state = state_;
     result.msg = msg;
+    cout << HEADER_PRINT_STATE << "[Action SlippingControl] " GREEN "Succeeded" CRESET << endl;
     slipping_control_as_.setSucceeded(result);
 }
 
 void executeSlippingControlCB( const slipping_control_common::SlippingControlGoalConstPtr &goal )
 {
 
+    cout << HEADER_PRINT_STATE << "[Action SlippingControl] Called." << endl;
+
     switch (goal->mode)
     {
 
         case slipping_control_common::SlippingControlGoal::MODE_GRIPPER_PIVOTING:
         {
+
+            cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_GRIPPER_PIVOTING]" << endl;
 
             //Check initial state
             switch (state_)
@@ -675,7 +720,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_TO_DYN_SLIPPING_AVOIDANCE:
                 {
                     //From a slipping control transi tionstate | this should not happen
-                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_GRIPPER_PIVOTING but state is a Slipping Control state transition | this should not happen" CRESET << endl;
+                    cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_GRIPPER_PIVOTING] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
                     state_ = STATE_TO_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){
                         state_ = STATE_GRIPPER_PIVOTING;
@@ -689,7 +734,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_GRIPPER_PIVOTING:
                 {
                     //From the same state
-                    cout << HEADER_PRINT YELLOW "Called GRIPPER_PIVOING but state is STATE_GRIPPER_PIVOTING | refreshing..." CRESET << endl;
+                    cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_GRIPPER_PIVOTING] " YELLOW " Refreshing..." CRESET << endl;
                     state_ = STATE_TO_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){
                         state_ = STATE_GRIPPER_PIVOTING;
@@ -703,8 +748,17 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 default:
                 {
                     //Invalid Initial State
-                    cout << HEADER_PRINT RED "Invalid Initial State in executeSlippingControlCB():MODE_GRIPPER_PIVOTING" CRESET << endl;
-                    slippingControlActionSetAborted("Invalid Initial State");
+                    pErrorInvalidStartState("SlippingControl/GRIPPER_PIVOTING", 
+                                                 getStateStr(STATE_GRASPED)
+                                                 + "|" + getStateStr(STATE_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_GRIPPER_PIVOTING)
+                                    );
+
+                    slippingControlActionSetAborted("Invalid Initial State = " + getStateStr(state_) );
                 }
 
             }
@@ -714,6 +768,8 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
 
         case slipping_control_common::SlippingControlGoal::MODE_SLIPPING_AVOIDANCE:
         {
+
+            cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_SLIPPING_AVOIDANCE]" << endl;
             
             //Check initial state
             switch (state_)
@@ -740,7 +796,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_TO_DYN_SLIPPING_AVOIDANCE:
                 {
                     //From a slipping control transi tionstate | this should not happen
-                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_SLIPPING_AVOIDANCE but state is a Slipping Control state transition | this should not happen" CRESET << endl;
+                    cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_SLIPPING_AVOIDANCE] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
                     state_ = STATE_TO_SLIPPING_AVOIDANCE;
                     if(goToSlippingAvoidance()){
                         state_ = STATE_SLIPPING_AVOIDANCE;
@@ -751,9 +807,10 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                     break;
                 }
 
-                case STATE_SLIPPING_AVOIDANCE : {
+                case STATE_SLIPPING_AVOIDANCE: 
+                {
                     //From the same state
-                    cout << HEADER_PRINT YELLOW "Called STATE_SLIPPING_AVOIDANCE but state is STATE_SLIPPING_AVOIDANCE | refreshing..." CRESET << endl;
+                    cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_SLIPPING_AVOIDANCE] " YELLOW " Refreshing..." CRESET << endl;
                     state_ = STATE_TO_SLIPPING_AVOIDANCE;
                     if(goToSlippingAvoidance()){
                         state_ = STATE_SLIPPING_AVOIDANCE;
@@ -767,8 +824,17 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 default:
                 {
                     //Invalid Initial State
-                    cout << HEADER_PRINT RED "Invalid Initial State in executeSlippingControlCB():MODE_SLIPPING_AVOIDANCE" CRESET << endl;
-                    slippingControlActionSetAborted("Invalid Initial State");
+                    pErrorInvalidStartState("SlippingControl/SLIPPING_AVOIDANCE", 
+                                                 getStateStr(STATE_GRASPED)
+                                                 + "|" + getStateStr(STATE_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_SLIPPING_AVOIDANCE)
+                                    );
+
+                    slippingControlActionSetAborted("Invalid Initial State = " + getStateStr(state_) );
                 }
 
             }
@@ -777,7 +843,10 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
         }
 
 
-        case slipping_control_common::SlippingControlGoal::MODE_DYN_SLIPPING_AVOIDANCE :{
+        case slipping_control_common::SlippingControlGoal::MODE_DYN_SLIPPING_AVOIDANCE:
+        {
+
+            cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_DYN_SLIPPING_AVOIDANCE]" << endl;
             
             //Check initial state
             switch (state_)
@@ -804,7 +873,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_TO_DYN_SLIPPING_AVOIDANCE:
                 {
                     //From a slipping control transi tionstate | this should not happen
-                    cout << HEADER_PRINT BOLDYELLOW "Called MODE_DYN_SLIPPING_AVOIDANCE but state is a Slipping Control state transition | this should not happen" CRESET << endl;
+                    cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_DYN_SLIPPING_AVOIDANCE] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
                     state_ = STATE_TO_DYN_SLIPPING_AVOIDANCE;
                     if(goToDynSlippingAvoidance()){
                         state_ = STATE_DYN_SLIPPING_AVOIDANCE;
@@ -818,8 +887,9 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_DYN_SLIPPING_AVOIDANCE: 
                 {
                     //From the same state
-                    cout << HEADER_PRINT YELLOW "Called STATE_DYN_SLIPPING_AVOIDANCE but state is STATE_DYN_SLIPPING_AVOIDANCE | refreshing..." << endl
-                    << "I will not reset the dyn force controller if it is active..." CRESET << endl;
+                    cout << HEADER_PRINT_STATE "[Action SlippingControl][STATE_DYN_SLIPPING_AVOIDANCE] " YELLOW " Refreshing..." << endl
+                    << "I will not reset the dyn force controller if active..." CRESET << endl;
+                   
                     state_ = STATE_TO_DYN_SLIPPING_AVOIDANCE;
                     if(goToDynSlippingAvoidance()){
                         state_ = STATE_DYN_SLIPPING_AVOIDANCE;
@@ -833,8 +903,17 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 default:
                 {
                     //Invalid Initial State
-                    cout << HEADER_PRINT RED "Invalid Initial State in executeSlippingControlCB():MODE_DYN_SLIPPING_AVOIDANCE" CRESET << endl;
-                    slippingControlActionSetAborted("Invalid Initial State");
+                    pErrorInvalidStartState("SlippingControl/DYN_SLIPPING_AVOIDANCE", 
+                                                 getStateStr(STATE_GRASPED)
+                                                 + "|" + getStateStr(STATE_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_DYN_SLIPPING_AVOIDANCE)
+                                    );
+
+                    slippingControlActionSetAborted("Invalid Initial State = " + getStateStr(state_) );
                 }
 
             }
@@ -869,13 +948,14 @@ void abortAllActions()
 void abortGrasping()
 { 
     if( grasp_as_.isActive() ){
+        cout << HEADER_PRINT_STATE BOLDYELLOW "call abortGrasping() with grasp active..." CRESET << endl;
         b_grasping_preemted_ = true;
     }
 }
 
 void abortSlippingControl()
 {
-    cout << HEADER_PRINT BOLDYELLOW "abortSlippingControl() is void!" CRESET << endl;
+    cout << HEADER_PRINT_STATE BOLDYELLOW "abortSlippingControl() is void!" CRESET << endl;
 }
 
 double grasp_force_m_;
@@ -969,14 +1049,14 @@ void dynFn_CB(const std_msgs::Float64::ConstPtr& msg)
 
 bool goToZeroDeg()
 {
-    cout << HEADER_PRINT BOLDYELLOW "goToZeroDeg() is void" CRESET << endl;
+    cout << HEADER_PRINT_STATE BOLDYELLOW "goToZeroDeg() is void" CRESET << endl;
     //remember to change state if something goes wrong
     return true;
 }
 
 bool goToSlippingAvoidance()
 {
-    cout << HEADER_PRINT BOLDYELLOW "goToSlippingAvoidance() is void" CRESET << endl;
+    cout << HEADER_PRINT_STATE BOLDYELLOW "goToSlippingAvoidance() is void" CRESET << endl;
     //remember to change state if something goes wrong
     return true;
 }
@@ -989,8 +1069,8 @@ bool goToDynSlippingAvoidance( bool b_reset_dyn_force_controller = false, bool b
     {
         if(!dyn_controller_set_running(false))
         {
-            cout << HEADER_PRINT BOLDRED "FAIL TO RESET DYN CONTROLLER..." CRESET << endl;
-            state_ = STATE_UNDEFINED;
+            state_ = STATE_UNDEFINED;            
+            cout << HEADER_PRINT_STATE BOLDRED "FAIL TO RESET DYN CONTROLLER..." CRESET << endl;
             return false;
         }
     }
@@ -998,8 +1078,8 @@ bool goToDynSlippingAvoidance( bool b_reset_dyn_force_controller = false, bool b
     {
         if(!observer_set_running(false))
         {
-            cout << HEADER_PRINT BOLDRED "FAIL TO RESET OBSERVER..." CRESET << endl;
-            state_ = STATE_UNDEFINED;
+            state_ = STATE_UNDEFINED;            
+            cout << HEADER_PRINT_STATE BOLDRED "FAIL TO RESET OBSERVER..." CRESET << endl;
             return false;
         }
     }
@@ -1007,20 +1087,77 @@ bool goToDynSlippingAvoidance( bool b_reset_dyn_force_controller = false, bool b
     //Make sure that observer is active
     if(!observer_set_running(true))
     {
-        cout << HEADER_PRINT BOLDRED "FAIL TO START OBSERVER..." CRESET << endl;
-        state_ = STATE_UNDEFINED;
+        state_ = STATE_UNDEFINED;        
+        cout << HEADER_PRINT_STATE BOLDRED "FAIL TO START OBSERVER..." CRESET << endl;
         return false;
     }
     //Make sure that dyn controller is active
     if(!dyn_controller_set_running(true))
     {
-        cout << HEADER_PRINT BOLDRED "FAIL TO START DYN CONTROLLER..." CRESET << endl;
-        state_ = STATE_UNDEFINED;
+        state_ = STATE_UNDEFINED;        
+        cout << HEADER_PRINT_STATE BOLDRED "FAIL TO START DYN CONTROLLER..." CRESET << endl;
         return false;
     }
     
     return true;
 
+}
+
+void pErrorInvalidStartState( const string& action_name, const string& valid_state_list)
+{
+    cout << HEADER_PRINT_STATE "[Action " << action_name << "] " RED "Invalid initial state" CRESET "." << endl
+    << "Valid states are: " << valid_state_list << endl;
+}
+
+string getStateStr()
+{
+    return getStateStr(state_);
+}
+
+string getStateStr(int s)
+{
+    switch (s)
+    {
+        case STATE_UNDEFINED:{
+            return "STATE_UNDEFINED";
+        }
+        case STATE_HOME:{
+            return "STATE_HOME";
+        }
+        case STATE_HOMING:{
+            return "STATE_HOMING";
+        }
+        case STATE_REMOVING_BIAS:{
+            return "STATE_REMOVING_BIAS";
+        }
+        case STATE_GRASPING:{
+            return "STATE_GRASPING";
+        }
+        case STATE_GRASPED:{
+            return "STATE_GRASPED";
+        }
+        case STATE_TO_GRIPPER_PIVOTING:{
+            return "STATE_TO_GRIPPER_PIVOTING";
+        }
+        case STATE_GRIPPER_PIVOTING:{
+            return "STATE_GRIPPER_PIVOTING";
+        }
+        case STATE_TO_SLIPPING_AVOIDANCE:{
+            return "STATE_TO_SLIPPING_AVOIDANCE";
+        }
+        case STATE_SLIPPING_AVOIDANCE:{
+            return "STATE_SLIPPING_AVOIDANCE";
+        }
+        case STATE_TO_DYN_SLIPPING_AVOIDANCE:{
+            return "STATE_TO_DYN_SLIPPING_AVOIDANCE";
+        }
+        case STATE_DYN_SLIPPING_AVOIDANCE:{
+            return "STATE_DYN_SLIPPING_AVOIDANCE";
+        }
+        default:{
+            return (BOLDRED "INVALID_STATE" CRESET);
+        }
+    }
 }
 
 /************************************
@@ -1033,12 +1170,12 @@ bool goToDynSlippingAvoidance( bool b_reset_dyn_force_controller = false, bool b
 bool send_homing_command()
 {
     std_srvs::Empty emptySrvMsg;
-    cout << HEADER_PRINT "Homing..." << endl;
+    cout << HEADER_PRINT_STATE "Homing..." << endl;
 	if(!service_client_homing_gripper_.call(emptySrvMsg)){
-		cout << HEADER_PRINT BOLDRED "Error during homing" CRESET << endl;
+		cout << HEADER_PRINT_STATE BOLDRED "Error during homing" CRESET << endl;
         return false;
 	} else {
-        cout << HEADER_PRINT "Homing Command Sent" CRESET << endl;
+        cout << HEADER_PRINT_STATE "Homing Command Sent" CRESET << endl;
         return true;
     }
 }
@@ -1054,15 +1191,15 @@ bool send_set_running_srv(ros::ServiceClient& client, bool b_running, const stri
     string what = b_running ? "START" : "STOP";
     string what_ing = b_running ? "STARTING" : "STOPPING";
 
-    cout << HEADER_PRINT << what_ing << " " << msg << endl;
+    cout << HEADER_PRINT_STATE << what_ing << " " << msg << endl;
 
     bool b_out = client.call(setBoolmsg);
     b_out = b_out && setBoolmsg.response.success;
 
     if(b_out){
-        cout << HEADER_PRINT << what << " " << msg << GREEN " OK" CRESET << endl;
+        cout << HEADER_PRINT_STATE << what << " " << msg << GREEN " OK" CRESET << endl;
     } else {
-        cout << HEADER_PRINT RED "Error during " << BOLDRED << what << CRESET RED << " " << msg << CRESET << endl;
+        cout << HEADER_PRINT_STATE RED "Error during " << BOLDRED << what << CRESET RED << " " << msg << CRESET << endl;
     }
 
     return b_out;

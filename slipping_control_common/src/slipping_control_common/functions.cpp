@@ -278,8 +278,10 @@ double d_gauss_fun( double x, double gain, double mean, double sigma_square )
 
 double getFn_ls( double ft, double taun, double ft_tilde_ls, double taun_tilde_ls, const LS_INFO& ls_info )
 {
+    ft_tilde_ls = fabs(ft_tilde_ls);
+    taun_tilde_ls = fabs(taun_tilde_ls);
     if(ft_tilde_ls > 0.1){
-        return (ft/ls_info.mu)/fabs(ft_tilde_ls);
+        return (fabs(ft)/ls_info.mu)/ft_tilde_ls;
     } else if(taun_tilde_ls > 0.1){
         return pow( (fabs(taun)/(2.0*ls_info.mu*ls_info.xik_nuk*ls_info.delta))/taun_tilde_ls , 1.0/(ls_info.gamma + 1.0) );
     } else {

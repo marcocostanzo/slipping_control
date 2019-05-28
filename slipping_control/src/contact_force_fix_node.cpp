@@ -51,7 +51,6 @@ double trigger_fcn( double x_k, double & s_k, double DELTA ){
 
 ros::Publisher pubContact0;
 ros::Publisher pubContact1;
-ros::Publisher pubSign;
 
 //State vars
 double segn_tau0 = -1.0;
@@ -61,7 +60,6 @@ bool schmitt_t_tau0_state = true;
 bool schmitt_t_tau1_state = true;
 double tau0_abs = 0.0, tau1_abs = 0.0;
 
-std_msgs::Int8 sign_msg;
 void wrench0CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
 
     tau0_abs = fabs(msg->forces.taun);
@@ -88,10 +86,7 @@ void wrench0CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
 
     msg->forces.taun = segn_tau*tau0_abs_triggered;
 
-    sign_msg.data = segn_tau;
-
     pubContact0.publish( msg );
-    pubSign.publish( sign_msg );
 
 }
 

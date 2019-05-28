@@ -28,6 +28,7 @@
 //#include "slipping_control_common/SetMu.h"
 
 //#define DEBUG_FZERO
+#define LS_USE_QUADRANT_1_4
 
 #define SIGMA_DEFAULT_VALUE 0.0
 #define SIGMA_MAX_VALUE 30.0
@@ -113,6 +114,14 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
     //Compute Normalized LS
     ls_msg.ft_tilde_ls = ft_tilde_ls_model( ls_msg.cor_tilde, *sigma_info );
     ls_msg.taun_tilde_ls = taun_tilde_ls_model( ls_msg.cor_tilde, *gauss_info );
+
+    //This fix is needed to use the 1^ and 4^ quadrant of the Limit Surface
+    //This is due to the choice made for the contact frame, i.e., ft>0
+    #ifdef LS_USE_QUADRANT_1_4
+    ls_msg.ft_tilde_ls = fabs(ls_msg.ft_tilde_ls);
+    if( ls_msg.cor_tilde > 0.0 )
+        ls_msg.taun_tilde_ls = -ls_msg.taun_tilde_ls;
+    #endif
 
     //Compute LS & Radius
     ls_msg.ft_ls = ls_msg.ft_tilde_ls*getMaxFt( msg->forces.fn , ls_info.mu );

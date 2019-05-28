@@ -75,7 +75,7 @@ using namespace std;
 #define STATE_UNDEFINED                    -1
 #define STATE_HOME                          0
 #define STATE_HOMING                        1
-#define STATE_REMOVING_BIAS                 2
+#define STATE_COMPUTING_BIAS                2
 #define STATE_GRASPING                      3
 #define STATE_GRASPED                       4
 #define STATE_TO_GRIPPER_PIVOTING           5
@@ -213,7 +213,7 @@ Slipping_Control_AS(
     topic_force1_str_(topic_force1),
     home_gripper_as_(nh_, action_home_gripper, boost::bind(&Slipping_Control_AS::executeHomeGripperCB, this, _1), false),
     compute_bias_as_(nh_, action_compute_bias, boost::bind(&Slipping_Control_AS::executeComputeBiasCB, this, _1), false),
-    grasp_as_(nh_, action_compute_bias, boost::bind(&Slipping_Control_AS::executeGraspCB, this, _1), false),
+    grasp_as_(nh_, action_grasp, boost::bind(&Slipping_Control_AS::executeGraspCB, this, _1), false),
     slipping_control_as_(nh_, action_slipping_control, boost::bind(&Slipping_Control_AS::executeSlippingControlCB, this, _1), false),
     // true causes the client to spin its own thread
     ac_compute_bias_0(action_client_compute_bias_0, true),
@@ -297,7 +297,7 @@ void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPt
         } else {
             //No error
             result.msg = "OK";
-            state_ = STATE_UNDEFINED;
+            state_ = STATE_HOME;
         }
 
         cout << HEADER_PRINT_STATE << "[Action HomeGripper] " GREEN "Succeeded" CRESET << endl;
@@ -364,7 +364,7 @@ void executeComputeBiasCB( const sun_tactile_common::ComputeBiasGoalConstPtr &go
 
     if(state_ == STATE_HOME){
 
-        state_ = STATE_REMOVING_BIAS;
+        state_ = STATE_COMPUTING_BIAS;
         cout << HEADER_PRINT_STATE "[Action ComputeBias] Begin." << endl;
 
         cout << HEADER_PRINT_STATE "[Action ComputeBias] Computing Bias of Finger 0..." << endl;
@@ -560,6 +560,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
             subF0_.shutdown();
             subF1_.shutdown();
             subGraspForce_.shutdown();
+            state_ = STATE_UNDEFINED; //<-- I really do not know....
             return;
         }
         ros::spinOnce();
@@ -582,6 +583,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
                 subF0_.shutdown();
                 subF1_.shutdown();
                 subGraspForce_.shutdown();
+                state_ = STATE_UNDEFINED; //<-- Contact not compleate... so?
                 return;
             }
 
@@ -600,7 +602,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
     subF1_.shutdown();
 
     //In contact
-    cout << HEADER_PRINT_STATE "[Action Grasp] Contact" GREEN "OK" CRESET << endl;
+    cout << HEADER_PRINT_STATE "[Action Grasp] Contact " GREEN "OK" CRESET << endl;
 
     //Build Ramp
     double initial_force = grasp_force_m_;
@@ -623,6 +625,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
         if (grasp_as_.isPreemptRequested() || b_grasping_preemted_ || !ros::ok()) {
             graspActionSetPreempted();
             subGraspForce_.shutdown();
+            state_ = STATE_GRASPED; //<-- Grasped but with a different final force
             return;
         }
         sec = ros::Time::now().toSec() - sec_init;
@@ -924,6 +927,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
         default:
         {
             //Invalid INPUT IN GOAL
+            cout << HEADER_PRINT_STATE RED "Invalid mode in Slipping Control" CRESET << endl;
             slippingControlActionSetAborted("Invalid Request");
         }
     }
@@ -1127,8 +1131,8 @@ string getStateStr(int s)
         case STATE_HOMING:{
             return "STATE_HOMING";
         }
-        case STATE_REMOVING_BIAS:{
-            return "STATE_REMOVING_BIAS";
+        case STATE_COMPUTING_BIAS:{
+            return "STATE_COMPUTING_BIAS";
         }
         case STATE_GRASPING:{
             return "STATE_GRASPING";

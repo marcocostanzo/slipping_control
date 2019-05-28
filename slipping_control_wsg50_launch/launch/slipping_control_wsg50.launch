@@ -20,14 +20,14 @@
     <arg name="finger_distance_offset" default="0.0"/>
 
     <!-- Params Low level force control -->
-    <arg name="force_control_gain" default="27.0" />
-    <arg name="force_control_max_force" default="18.0" />
-    <arg name="force_control_filter" default="true" />
+    <arg name="force_control_gain" default="5.0" />
+    <arg name="force_control_max_force" default="10.0" />
+    <arg name="force_control_filter" default="false" />
     <arg name="force_control_cut_freq" default="250.0" />
     <arg name="force_control_rate" default="1000.0" />
 
-    <arg name="stiff_1" default="5000.0" />
-    <arg name="stiff_2" default="5.0839E6" />
+    <arg name="stiff_1" default="6.4346095511E+03" />
+    <arg name="stiff_2" default="4.8444986930E+06" />
     <arg name="stiff_use_linear_model" default="false" />
 
     <!-- Measure Filtering -->

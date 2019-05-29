@@ -242,15 +242,6 @@ target_link_libraries(dynamic_controller
 )
 #########################################
 #########################################
-add_executable(compute_static
-  src/compute_static_node.cpp
-)
-add_dependencies(compute_static ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(compute_static
-  ${catkin_LIBRARIES}
-)
-#########################################
-#########################################
 add_executable(grasping
   src/grasping_node.cpp
 )

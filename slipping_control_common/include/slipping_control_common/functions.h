@@ -24,12 +24,37 @@
 
 #include "GeometryHelper.h"
 #include "learn_algs/learn_algs.h"
-#include "ANN/ANN.h"
 #include "ros/package.h"
 #include "boost/function.hpp"
 #include <boost/bind.hpp>
 #include <boost/algorithm/string.hpp>
 #include <iomanip>
+
+#ifndef SUN_COLORS
+#define SUN_COLORS
+
+/* ======= COLORS ========= */
+#define CRESET   "\033[0m"
+#define BLACK   "\033[30m"      /* Black */
+#define RED     "\033[31m"      /* Red */
+#define GREEN   "\033[32m"      /* Green */
+#define YELLOW  "\033[33m"      /* Yellow */
+#define BLUE    "\033[34m"      /* Blue */
+#define MAGENTA "\033[35m"      /* Magenta */
+#define CYAN    "\033[36m"      /* Cyan */
+#define WHITE   "\033[37m"      /* White */
+#define BOLD    "\033[1m"       /* Bold */
+#define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
+#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
+#define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
+#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
+#define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
+#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
+#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
+#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+/*===============================*/
+
+#endif
 
 #define INIT_LS_MODEL_FILE_NAME_DIGIT_PRECISION 2
 
@@ -68,8 +93,6 @@ struct VEL_SYSTEM_INFO {
   double f_max_0;
   double f_max_1;
 };
-
-ANN* __ann_COR_R__;
 
 /*
   Update LS struct
@@ -221,34 +244,6 @@ void initLS_model( double k, const std::string& folder );
 */
 void LS_model_get_ref(std::vector<SIGMA_INFO>* &sigma_info, std::vector<GAUSS_INFO>* &gauss_info );
 
-
-double min_force_Jcst( 
-                      double fn, 
-                      const boost::function<double(double)>& limitSurface, 
-                      double ft, 
-                      double taun,
-                      const LS_INFO& info
-                      );
-
-double min_force_gradJ( double fn, const boost::function<double(double)>& diff_limitSurface, double ft, double taun ,const LS_INFO& info  );
-
-
-TooN::Vector<11> __ls_vector__ = TooN::makeVector(
--5.5755199549814404e+02, +2.5600762856660067e+03, -5.0168621788374185e+03, +5.4595553384185614e+03, -3.5993631840014637e+03, 
-+1.4748971163000995e+03, -3.7172937778738134e+02, +5.4453338697872042e+01, -4.4753429564631393e+00, -1.7794801753987689e-18, +1.0000000000000000e+00  
-);
-TooN::Vector<10> __diff_ls_vector__ = polydiff(__ls_vector__);
-
-double limitSurface_true( double fnk );
-
-double diff_limitSurface_true( double fnk );
-
-double limitSurface_line( double ft_n );
-
-double diff_limitSurface_line( double ft_n );
-
-void initANN_COR_R();
-
 TooN::Vector<> vel_sys_h_fcn(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
 
 TooN::Matrix<> vel_sys_HH_fcn(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
@@ -256,11 +251,5 @@ TooN::Matrix<> vel_sys_HH_fcn(const TooN::Vector<>& x, const TooN::Vector<>& u, 
 TooN::Vector<> vel_sys_f_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
 
 TooN::Matrix<> vel_sys_FF_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
-
-//TRANSL
-
-TooN::Vector<> vel_sys_transl_f_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
-
-TooN::Matrix<> vel_sys_transl_FF_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
 
 #endif

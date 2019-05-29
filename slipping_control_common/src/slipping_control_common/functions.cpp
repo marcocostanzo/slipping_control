@@ -364,81 +364,10 @@ void initLS_model( double k, const string& folder )
 
 }
 
-
-
 void LS_model_get_ref(std::vector<SIGMA_INFO>* &sigma_info, std::vector<GAUSS_INFO>* &gauss_info )
 {
     sigma_info = &__SIGMA_INFO__;
     gauss_info = &__GAUSS_INFO__;
-}
-
-
-
-
-
-
-//------------------------------------ OLD
-
-
-double min_force_Jcst( double fn, const boost::function<double(double)>& limitSurface, double ft, double taun ,const LS_INFO& info ){
-
-	fn = fabs(fn);
-    if(fn == 0.0)
-        return 10.0;
-
-    double ft_norm = ft/(info.gamma*fn);
-    if(ft_norm > 1.0)
-        ft_norm = 1.0;
-    
-
-    return ( limitSurface( ft_norm ) - (1.0/info.alpha) * taun / pow(fn,1.0+info.gamma) );
-
-}
-
-double min_force_gradJ( double fn, const boost::function<double(double)>& diff_limitSurface, double ft, double taun ,const LS_INFO& info  ){
-
-
-    double segn;
-    if(fn < 0.0)
-        segn = -1.0;
-    else if(fn > 0.0)
-        segn = 1.0;
-    else
-        return -1;
-        
-    fn = fabs(fn);
-    
-    double ft_norm = ft/(info.gamma*fn);
-    if(ft_norm < 1.0)
-        return segn*( -diff_limitSurface( ft_norm )*ft/(info.gamma*pow(fn,2))  + (1.0/info.alpha)*taun*(1.0+info.gamma)/pow(fn,info.gamma+2.0) );
-    else
-        return segn*( (1.0/info.alpha)*taun*(1.0+info.gamma)/pow(fn,info.gamma+2.0) );
-
-}
-
-double limitSurface_true( double fnk ){
-    return polyval( __ls_vector__, fnk  );    
-}
-
-double diff_limitSurface_true( double fnk ){
-    return polyval( __diff_ls_vector__, fnk  );
-}
-
-
-double limitSurface_line( double ft_n ){
-    return ( -ft_n + 1 );
-}
-
-double diff_limitSurface_line( double ft_n ){
-    return -1;
-}
-
-void initANN_COR_R(){
-    string path("");
-    path = ros::package::getPath("slipping_control_common");
-    path += "/ANN_COR";
-
-    __ann_COR_R__ = new ANN ( path );
 }
 
 Vector<> vel_sys_h_fcn(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
@@ -472,52 +401,6 @@ Matrix<> vel_sys_FF_fcn_cont(const Vector<>& x, const Vector<>& u, const VEL_SYS
     Matrix<3,3> F = Zeros;
 
     double den = 1.0/( info.Io + info.Mo*pow(info.cor+info.b,2) );
-
-    F(0,0) = -den * ( info.beta_o2 + info.beta_o3 );
-
-    F(0,1) = -info.sigma_02*den;
-
-    F(0,2) = -info.sigma_03*den;
-
-    F(1,0) = 1.0 - info.sigma_02/info.f_max_0 * x[1] * sign( x[0] );
-
-    F(1,1) = -info.sigma_02/info.f_max_0 * fabs( x[0] );
-
-    F(1,2) = 0.0;
-
-    F(2,0) = 1.0 - info.sigma_03/info.f_max_1 * x[2] * sign( x[0] );
-
-    F(2,1) = 0.0;
-
-    F(2,2) = -info.sigma_03/info.f_max_1 * fabs( x[0] );
-
-    return F;
-
-}
-
-//NUOVO SISTEMA TRANSL
-
-Vector<> vel_sys_transl_f_fcn_cont(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
-    
-    Vector<3> x_dot = Zeros;
-
-    double den = 1.0/info.Mo;
-
-    x_dot[0] = den * ( -(info.beta_o2 + info.beta_o3)*x[0] - info.sigma_02*x[1] - info.sigma_03*x[2] + u[0] );
-
-    x_dot[1] = x[0] - info.sigma_02/info.f_max_0 * fabs(x[0]) * x[1];
-
-    x_dot[2] = x[0] - info.sigma_03/info.f_max_1 * fabs(x[0]) * x[2];
-
-    return x_dot;
-
-}
-
-Matrix<> vel_sys_transl_FF_fcn_cont(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
-    
-    Matrix<3,3> F = Zeros;
-
-    double den = 1.0/info.Mo;
 
     F(0,0) = -den * ( info.beta_o2 + info.beta_o3 );
 

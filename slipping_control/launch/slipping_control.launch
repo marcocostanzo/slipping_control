@@ -67,6 +67,7 @@
 
 	<!-- PARAMS Static Controller -->
 	<arg name="fn_ls_gain" default="1.1"/>
+	<arg name="min_fn" default="1.0"/>
 
 	<!-- PARAMS Dyn Controller -->
 	<arg name="dyn_frequency" default="2000.0"/>
@@ -151,6 +152,7 @@
 
 		<!-- PARAMS -->
         <param name="fn_ls_gain" value="$(arg fn_ls_gain)"/>
+		<param name="min_fn" value="$(arg min_fn)"/>
 
 		<!-- Subs -->
         <param name="in_topic0" value="$(arg ls_0_topic)"/>

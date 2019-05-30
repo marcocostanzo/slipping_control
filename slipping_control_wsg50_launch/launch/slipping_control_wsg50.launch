@@ -249,7 +249,8 @@
 	    <arg name="kf_min_gen_max_force" value="0.001"/>
 
         <!-- PARAMS Static Controller -->
-	    <arg name="fn_ls_gain" value="1.1"/>	
+	    <arg name="fn_ls_gain" value="1.1"/>
+        <arg name="min_fn" value="1.0"/>	
 
         <!-- PARAMS Dyn Controller -->
         <arg name="dyn_frequency" value="2000.0"/>

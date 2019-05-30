@@ -33,7 +33,7 @@ using namespace std;
 /*PARAMS*/
 
 //Gain
-double fn_ls_gain;
+double fn_ls_gain, min_fn;
 
 //Messages
 slipping_control_common::LSStamped in_msg0;
@@ -82,6 +82,7 @@ int main(int argc, char *argv[]){
     nh_private.param("in_topic1" , in_topic1, string("finger1/ls") );
 
     nh_private.param("fn_ls_gain" , fn_ls_gain, 1.1 );
+    nh_private.param("min_fn" , min_fn, 1.0 );
 
     /******************/
 
@@ -137,6 +138,12 @@ void combineStatic(){
     out_msg.fn_ls = fn_ls_gain * (in_msg0.fn_ls + in_msg1.fn_ls);
 
     out_msg.fn_ls_free_pivot = in_msg0.fn_ls_free_pivot + in_msg1.fn_ls_free_pivot;
+
+    if(out_msg.fn_ls < min_fn)
+        out_msg.fn_ls = min_fn;
+    
+    if(out_msg.fn_ls_free_pivot < min_fn)
+        out_msg.fn_ls_free_pivot = min_fn;
 
 }
 

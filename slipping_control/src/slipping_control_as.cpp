@@ -177,6 +177,11 @@ ros::Subscriber subLSCombined_, subDynFn_;
 */
 ros::ServiceClient service_client_observer_set_running_, service_client_dyn_controller_set_running_;
 
+/*
+    Params
+*/
+double gain_go_to_zero_deg_ = 2.15; //Use ros-param here...
+
 public:
 
 /*
@@ -987,10 +992,12 @@ void read_force1_cb(const slipping_control_common::ContactForcesStamped::ConstPt
 }
 
 double fn_ls_;
+double fn_ls_free_pivot_;
 void LSCombined_CB(const slipping_control_common::LSCombinedStamped::ConstPtr& msg)
 {
 
     fn_ls_ = msg->fn_ls; //To use it in Dyn Fn CB
+    fn_ls_free_pivot_ = msg->fn_ls_free_pivot; //To Use in goToZeroDeg()
 
     switch (state_)
     {
@@ -1053,8 +1060,41 @@ void dynFn_CB(const std_msgs::Float64::ConstPtr& msg)
 
 bool goToZeroDeg()
 {
-    cout << HEADER_PRINT_STATE BOLDYELLOW "goToZeroDeg() is void" CRESET << endl;
+    //cout << HEADER_PRINT_STATE BOLDYELLOW "goToZeroDeg() is void" CRESET << endl;
     //remember to change state if something goes wrong
+    //I should check the preemption...
+
+    //Wait a sample of grasp force
+    subGraspForce_ = nh_.subscribe(topic_grasp_force_str_, 1, &Slipping_Control_AS::read_grasp_force_cb, this);
+    b_grasp_force_arrived_ = false;
+    while( !b_grasp_force_arrived_ )
+    {
+        if (!ros::ok()) {
+            cout << HEADER_PRINT_STATE BOLDRED " Ros not ok() in goToZeroDeg()" CRESET << endl;
+            exit(-1);
+            return false;
+        }
+        ros::spinOnce();
+    }
+
+    double fr = grasp_force_m_;
+
+    double gain_local = gain_go_to_zero_deg_/hz_;
+
+    ros::Rate loop_rate(hz_);
+
+    cout << HEADER_PRINT_STATE " goToZeroDeg() - Decreasing grasp force... " << endl;
+    while( fr > fn_ls_free_pivot_ )
+    {
+        ros::spinOnce();
+        fr = fr - gain_local*(fr - fn_ls_free_pivot_);
+        publish_force_ref(fr);
+        loop_rate.sleep();
+    }
+
+    
+    subGraspForce_.shutdown();
+    cout << HEADER_PRINT_STATE " goToZeroDeg() - " GREEN "Done" CRESET << endl;
     return true;
 }
 

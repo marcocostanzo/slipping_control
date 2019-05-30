@@ -65,6 +65,9 @@
 
 	<arg name="kf_min_gen_max_force" default="0.001"/>	
 
+	<!-- PARAMS Static Controller -->
+	<arg name="fn_ls_gain" default="1.1"/>
+
 	<!-- PARAMS Dyn Controller -->
 	<arg name="dyn_frequency" default="2000.0"/>
 	<arg name="dyn_i_gain" default="50.0"/>
@@ -145,6 +148,9 @@
 <!--Combine Ls-->
 
 	<node name="static_combine" pkg="slipping_control" type="static_combine" output="screen">
+
+		<!-- PARAMS -->
+        <param name="fn_ls_gain" value="$(arg fn_ls_gain)"/>
 
 		<!-- Subs -->
         <param name="in_topic0" value="$(arg ls_0_topic)"/>

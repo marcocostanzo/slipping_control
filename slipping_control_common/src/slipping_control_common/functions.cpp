@@ -316,7 +316,7 @@ void initLS_model( double k, const string& folder )
 		printf(BOLDRED "Error opening file..." CRESET);
 		printf(BOLDBLUE " %s\n" CRESET,model_file.c_str());
         printf(BOLDBLUE " Does the file exist?\n" CRESET);
-		exit(-1);
+		throw std::runtime_error("Could not open file");
 	}
 
     //Read First double -> k
@@ -326,7 +326,7 @@ void initLS_model( double k, const string& folder )
         //There is a problem... it is not the correct file?
         cout << BOLDRED "k does not match... " CRESET << k << "!=" << k_file << endl;
         fclose(f);
-        exit(-1);
+        throw std::runtime_error("k of the file does not match");
     }
 
     //Read ft_model

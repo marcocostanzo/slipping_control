@@ -24,7 +24,7 @@
 #include "slipping_control_common/ContactForcesStamped.h"
 #include "slipping_control_common/MaxForcesStamped.h"
 #include "slipping_control_common/VirtualCORStamped.h"
-#include "sun_utils/MultiVector.h"
+#include "sun_ros_msgs/MultiVector.h"
 
 using namespace std;
 
@@ -74,7 +74,7 @@ void virtual_cor_cb(const slipping_control_common::VirtualCORStamped::ConstPtr& 
 
 }
 
-void kf_measure_cb(const sun_utils::MultiVector::ConstPtr& msg) {
+void kf_measure_cb(const sun_ros_msgs::MultiVector::ConstPtr& msg) {
 
     std_msgs::Float64MultiArray outmsg;
     outmsg.data.resize(2);

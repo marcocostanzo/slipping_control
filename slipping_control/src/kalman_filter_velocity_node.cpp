@@ -28,7 +28,7 @@
 #include <Helper.h>
 #include <Kalman_Filter/Kalman_Filter_RK4.h>
 #include "slipping_control_common/LSCombinedStamped.h"
-#include "sun_utils/MultiVectorStamped.h"
+#include "sun_ros_msgs/MultiVectorStamped.h"
 
 #include "slipping_control_common/functions.h"
 
@@ -168,14 +168,14 @@ int main(int argc, char *argv[]){
     
     //Pubs
     ros::Publisher pubExtVel = nh_public.advertise<std_msgs::Float64>(extimated_velocity_topic_str, 1);
-    ros::Publisher pubExtState = nh_public.advertise<sun_utils::MultiVectorStamped>(extimated_state_topic_str, 1);
-    ros::Publisher pubExtMeasure = nh_public.advertise<sun_utils::MultiVectorStamped>(extimated_measure_topic_str, 1);
+    ros::Publisher pubExtState = nh_public.advertise<sun_ros_msgs::MultiVectorStamped>(extimated_state_topic_str, 1);
+    ros::Publisher pubExtMeasure = nh_public.advertise<sun_ros_msgs::MultiVectorStamped>(extimated_measure_topic_str, 1);
 
     //Init Pub Mex
     std_msgs::Float64 ext_vel_msg;
-    sun_utils::MultiVectorStamped ext_state_msg;
+    sun_ros_msgs::MultiVectorStamped ext_state_msg;
     ext_state_msg.data.data.resize(KF_DIM_STATE);
-    sun_utils::MultiVectorStamped ext_measure_msg;
+    sun_ros_msgs::MultiVectorStamped ext_measure_msg;
     ext_measure_msg.data.data.resize(KF_DIM_OUT);
     
     Vector<KF_DIM_OUT> y_hat_k_k1 = Zeros;

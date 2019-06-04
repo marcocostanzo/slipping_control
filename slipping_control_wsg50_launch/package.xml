@@ -50,7 +50,7 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <depend>slipping_control_common</depend>
-  <depend>sun_utils</depend>
+  <depend>sun_ros_msgs</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

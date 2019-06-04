@@ -14,7 +14,7 @@ slipping_control_common
 sun_helper_lib
 sun_learning_lib
 sun_systems_lib
-sun_utils
+sun_ros_msgs
 actionlib
 
 sun_tactile_common #to be removed in future

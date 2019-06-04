@@ -10,7 +10,7 @@ project(slipping_control_wsg50_launch)
 find_package(catkin REQUIRED COMPONENTS
 roscpp
 slipping_control_common
-sun_utils
+sun_ros_msgs
 )
 
 ## System dependencies are found with CMake's conventions

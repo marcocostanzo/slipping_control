@@ -623,9 +623,9 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
     }
     cout << HEADER_PRINT_STATE "[Action Grasp] Starting ramp... total time = " << ramp_total_time << endl;
 
-    //Do Ramp
-    double sec = 0.0;  
+    //Do Ramp 
     double sec_init = ros::Time::now().toSec();
+    double sec = ros::Time::now().toSec() - sec_init; 
     while ( ros::ok() && sec < ramp_total_time ) {
         if (grasp_as_.isPreemptRequested() || b_grasping_preemted_ || !ros::ok()) {
             graspActionSetPreempted();
@@ -633,15 +633,18 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
             state_ = STATE_GRASPED; //<-- Grasped but with a different final force
             return;
         }
-        sec = ros::Time::now().toSec() - sec_init;
+        
         graspActionPublishForce( initial_force + sec * force_slope ); 
 
         loop_rate.sleep();
         ros::spinOnce();
 
+        sec = ros::Time::now().toSec() - sec_init;
+
     }
 
     //publish final force (to be sure)
+    graspActionPublishForce( goal->desired_force );
     graspActionPublishForce( goal->desired_force );
 
     cout << HEADER_PRINT_STATE "[Action Grasp] Ramp " GREEN "OK" CRESET << endl;

@@ -180,7 +180,7 @@ ros::ServiceClient service_client_observer_set_running_, service_client_dyn_cont
 /*
     Params
 */
-double gain_go_to_zero_deg_ = 2.15; //Use ros-param here...
+double gain_go_to_zero_deg_ = 1.0; //Use ros-param here...
 
 public:
 
@@ -686,7 +686,7 @@ void slippingControlActionSetPreempted(const string& msg = string("Preempted"))
 void slippingControlActionSetSucceeded(const string& msg = string("Succeeded"))
 {
     slipping_control_common::SlippingControlResult result;
-    result.success = false;
+    result.success = true;
     result.state = state_;
     result.msg = msg;
     cout << HEADER_PRINT_STATE << "[Action SlippingControl] " GREEN "Succeeded" CRESET << endl;
@@ -730,7 +730,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_TO_SLIPPING_AVOIDANCE:
                 case STATE_TO_DYN_SLIPPING_AVOIDANCE:
                 {
-                    //From a slipping control transi tionstate | this should not happen
+                    //From a slipping control transition state | this should not happen
                     cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_GRIPPER_PIVOTING] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
                     state_ = STATE_TO_GRIPPER_PIVOTING;
                     if( goToZeroDeg() ){

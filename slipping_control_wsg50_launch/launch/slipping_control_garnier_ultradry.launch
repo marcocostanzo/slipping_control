@@ -118,7 +118,7 @@
 
         <!--Subs-->
         <arg name="measure_topic" value="$(arg grasp_force_topic)" />
-        <arg name="measure_topic_type" value="Float64" />
+        <arg name="measure_topic_type" value="Float64Stamped" />
         <arg name="force_command_topic" value="$(arg force_command_topic)" />
 
         <!--Pubs-->

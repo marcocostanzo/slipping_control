@@ -112,6 +112,7 @@ bool setRunning_callbk(std_srvs::SetBool::Request  &req,
 
         fnd.data = 0.0;
         running = false;
+        fnd.header.stamp = ros::Time::now();
         outPub.publish(fnd);
 
         cout << HEADER_PRINT YELLOW "Stopped!" CRESET << endl;

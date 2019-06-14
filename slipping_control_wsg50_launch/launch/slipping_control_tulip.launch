@@ -20,15 +20,15 @@
     <arg name="finger_distance_offset" default="0.0"/>
 
     <!-- Params Low level force control -->
-    <arg name="force_control_gain" default="5.0" />
+    <arg name="force_control_gain" default="6.0" />
     <arg name="force_control_max_force" default="10.0" />
     <arg name="force_control_filter" default="false" />
     <arg name="force_control_cut_freq" default="250.0" />
     <arg name="force_control_rate" default="1000.0" />
 
     <!-- Balea Augen Make-Up -->
-    <arg name="stiff_1" default="4.1019784140E+03" />
-    <arg name="stiff_2" default="2.3031595576E+06" />
+    <arg name="stiff_1" default="4.7819095549E+03" />
+    <arg name="stiff_2" default="2.7097681320E+06" />
     <arg name="stiff_use_linear_model" default="false" />
 
     <!-- Measure Filtering -->
@@ -221,7 +221,7 @@
         <!-- PARAMS COMPUTE_LS -->
         <arg name="delta" value="0.004353"/>
         <arg name="gamma" value="0.2569"/>
-        <arg name="mu" value="0.5"/>
+        <arg name="mu" value="0.7"/>
         <arg name="k" value="4.0"/>
         <!--
         <arg name="delta_0" value="$(arg delta)"/>

@@ -25,7 +25,7 @@
 #include "std_srvs/SetBool.h"
 
 #include <slipping_control_common/ContactForcesStamped.h>
-#include <std_msgs/Float64.h>
+#include <sun_ros_msgs/Float64Stamped.h>
 #include "slipping_control_common/LSCombinedStamped.h"
 
 #include <slipping_control_common/HomeGripperAction.h>
@@ -226,7 +226,7 @@ Slipping_Control_AS(
 {
     subLSCombined_ = nh_.subscribe(topic_ls_combined, 1, &Slipping_Control_AS::LSCombined_CB, this);
     subDynFn_ = nh_.subscribe(topic_dyn_fn, 1, &Slipping_Control_AS::dynFn_CB, this);
-    pub_desired_force_ = nh_.advertise<std_msgs::Float64>(topic_desired_grasp_force, 1);
+    pub_desired_force_ = nh_.advertise<sun_ros_msgs::Float64Stamped>(topic_desired_grasp_force, 1);
     service_client_homing_gripper_ = nh_.serviceClient<std_srvs::Empty>(service_clinet_home_gripper);
     service_client_force_controller_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_force_controller_set_running);
     service_client_observer_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_observer_set_running);
@@ -523,8 +523,9 @@ void graspActionSetPreempted(const string& msg = string("Preempted"))
 void graspActionPublishForce( double force )
 {
     if(state_ == STATE_GRASPING){
-        std_msgs::Float64 force_ref_msg;
+        sun_ros_msgs::Float64Stamped force_ref_msg;
         force_ref_msg.data = force;
+        force_ref_msg.header.stamp = ros::Time::now();
         pub_desired_force_.publish(force_ref_msg);
 
         slipping_control_common::GraspFeedback feedback_msg;
@@ -972,7 +973,7 @@ void abortSlippingControl()
 
 double grasp_force_m_;
 bool b_grasp_force_arrived_ = false;
-void read_grasp_force_cb(const std_msgs::Float64::ConstPtr& forceMsg)
+void read_grasp_force_cb(const sun_ros_msgs::Float64Stamped::ConstPtr& forceMsg)
 {
     grasp_force_m_ = fabs(forceMsg->data);
     b_grasp_force_arrived_ = true;
@@ -1033,7 +1034,7 @@ void LSCombined_CB(const slipping_control_common::LSCombinedStamped::ConstPtr& m
 }
 
 double fn_dyn_;
-void dynFn_CB(const std_msgs::Float64::ConstPtr& msg)
+void dynFn_CB(const sun_ros_msgs::Float64Stamped::ConstPtr& msg)
 {
 
     //If it is not fn_ls_, return! it is better to wait for the fn_ls_ message to arrive
@@ -1279,8 +1280,9 @@ bool dyn_controller_set_running(bool b_running)
 
 void publish_force_ref( double force )
 {
-    std_msgs::Float64 force_ref_msg;
+    sun_ros_msgs::Float64Stamped force_ref_msg;
     force_ref_msg.data = force;
+    force_ref_msg.header.stamp = ros::Time::now();
     pub_desired_force_.publish(force_ref_msg);
 }
 

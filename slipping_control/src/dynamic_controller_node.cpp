@@ -21,7 +21,7 @@
 
 #include "ros/ros.h"
 
-#include <std_msgs/Float64.h>
+#include <sun_ros_msgs/Float64Stamped.h>
 #include "std_srvs/SetBool.h"
 
 #include <TF_SISO/TF_FIRST_ORDER_FILTER.h>
@@ -69,19 +69,20 @@ double input_data;
 TF_FIRST_ORDER_FILTER* tf_pseudo_integrator;
 bool running = false;
 
-std_msgs::Float64 fnd;
-void readInput_and_pub(const std_msgs::Float64::ConstPtr& msg){
+sun_ros_msgs::Float64Stamped fnd;
+void readInput_and_pub(const sun_ros_msgs::Float64Stamped::ConstPtr& msg){
 
     if(!running){
         return;
     }
 
     fnd.data = fabs(msg->data * p_gain);
+    fnd.header = msg->header;
 
 	outPub.publish(fnd);
 }
 
-void readInput(const std_msgs::Float64::ConstPtr& msg){
+void readInput(const sun_ros_msgs::Float64Stamped::ConstPtr& msg){
 
     input_data = msg->data;
 
@@ -151,7 +152,7 @@ int main(int argc, char *argv[]){
     else
         in_sub = nh_public.subscribe(in_topic, 1, readInput_and_pub);
 
-	outPub = nh_public.advertise<std_msgs::Float64>( out_topic,1);
+	outPub = nh_public.advertise<sun_ros_msgs::Float64Stamped>( out_topic,1);
 
     ros::ServiceServer serviceSetRunning = nh_public.advertiseService(set_running_service_str, setRunning_callbk);
 
@@ -168,7 +169,8 @@ int main(int argc, char *argv[]){
             }
             
             //Apply control  ---> fabs(i+p)  or fabs(i)+fabs(p) ?
-            fnd.data = fabs( tf_pseudo_integrator->apply(input_data) + p_gain * input_data );          
+            fnd.data = fabs( tf_pseudo_integrator->apply(input_data) + p_gain * input_data );  
+            fnd.header.stamp = ros::Time::now();        
             
             outPub.publish(fnd);
 

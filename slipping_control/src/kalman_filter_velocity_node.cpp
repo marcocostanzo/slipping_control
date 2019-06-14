@@ -22,7 +22,7 @@
 #include "ros/ros.h"
 #include "ros/package.h"
 
-#include <std_msgs/Float64.h>
+#include <sun_ros_msgs/Float64Stamped.h>
 #include "std_srvs/SetBool.h"
 
 #include <Helper.h>
@@ -167,12 +167,12 @@ int main(int argc, char *argv[]){
     ros::Subscriber subLSCombined = nh_public.subscribe(ls_combined_tipic_str, 1, sub_ls_combined);
     
     //Pubs
-    ros::Publisher pubExtVel = nh_public.advertise<std_msgs::Float64>(extimated_velocity_topic_str, 1);
+    ros::Publisher pubExtVel = nh_public.advertise<sun_ros_msgs::Float64Stamped>(extimated_velocity_topic_str, 1);
     ros::Publisher pubExtState = nh_public.advertise<sun_ros_msgs::MultiVectorStamped>(extimated_state_topic_str, 1);
     ros::Publisher pubExtMeasure = nh_public.advertise<sun_ros_msgs::MultiVectorStamped>(extimated_measure_topic_str, 1);
 
     //Init Pub Mex
-    std_msgs::Float64 ext_vel_msg;
+    sun_ros_msgs::Float64Stamped ext_vel_msg;
     sun_ros_msgs::MultiVectorStamped ext_state_msg;
     ext_state_msg.data.data.resize(KF_DIM_STATE);
     sun_ros_msgs::MultiVectorStamped ext_measure_msg;
@@ -200,6 +200,7 @@ int main(int argc, char *argv[]){
         ext_measure_msg.data.data[1] = y_hat_k_k1[1];
         ext_measure_msg.header.stamp = ros::Time::now();
         ext_state_msg.header.stamp = ext_measure_msg.header.stamp;
+        ext_vel_msg.header.stamp = ext_measure_msg.header.stamp;
 
         /*Security check*/
         if(     isnan(kf->get_state()[0]) || isnan(kf->get_state()[1]) || isnan(kf->get_state()[2]) )

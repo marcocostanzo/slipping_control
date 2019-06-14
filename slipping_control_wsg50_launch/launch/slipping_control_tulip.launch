@@ -255,9 +255,9 @@
 
         <!-- PARAMS Dyn Controller -->
         <arg name="dyn_frequency" value="2000.0"/>
-        <arg name="dyn_i_gain" value="50.0"/>
-        <arg name="dyn_p_gain" value="13.0"/>
-        <arg name="dyn_integrator_dc_gain" value="35.0"/>
+        <arg name="dyn_i_gain" value="2.5"/>
+        <arg name="dyn_p_gain" value="0.65"/>
+        <arg name="dyn_integrator_dc_gain" value="3.5"/>
 
         <!-- PARAMS Slipping Control Action Server -->
         <arg name="as_rate" value="500.0"/>

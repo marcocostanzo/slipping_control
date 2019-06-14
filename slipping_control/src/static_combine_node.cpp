@@ -107,19 +107,19 @@ void combineStatic(){
 
     out_msg.header.frame_id = "combined_ls";
 
-    out_msg.sigma = (in_msg0.sigma + in_msg1.sigma) / 2.0;
+    out_msg.sigma = (in_msg0.sigma - in_msg1.sigma) / 2.0;
 
-    out_msg.cor_tilde = (in_msg0.cor_tilde + in_msg1.cor_tilde) / 2.0;
+    out_msg.cor_tilde = (in_msg0.cor_tilde - in_msg1.cor_tilde) / 2.0;
 
-    out_msg.cor = (in_msg0.cor + in_msg1.cor) / 2.0;
+    out_msg.cor = (in_msg0.cor - in_msg1.cor) / 2.0;
 
     out_msg.ft_tilde_ls = (in_msg0.ft_tilde_ls + in_msg1.ft_tilde_ls) / 2.0;
 
-    out_msg.taun_tilde_ls = (in_msg0.taun_tilde_ls + in_msg1.taun_tilde_ls) / 2.0;
+    out_msg.taun_tilde_ls = (in_msg0.taun_tilde_ls - in_msg1.taun_tilde_ls) / 2.0;
 
     out_msg.ft_ls = in_msg0.ft_ls + in_msg1.ft_ls;
 
-    out_msg.taun_ls = in_msg0.taun_ls + in_msg1.taun_ls;
+    out_msg.taun_ls = in_msg0.taun_ls - in_msg1.taun_ls;
 
     out_msg.radius = (in_msg0.radius + in_msg1.radius) / 2.0;
 
@@ -129,11 +129,11 @@ void combineStatic(){
 
     out_msg.generalized_max_force1 = in_msg1.generalized_max_force;
 
-    out_msg.generalized_force = in_msg0.generalized_force + in_msg1.generalized_force;
+    out_msg.generalized_force = in_msg0.generalized_force - in_msg1.generalized_force;
 
     out_msg.generalized_force0 = in_msg0.generalized_force;
 
-    out_msg.generalized_force1 = in_msg1.generalized_force;
+    out_msg.generalized_force1 = -in_msg1.generalized_force;
 
     out_msg.fn_ls = fn_ls_gain * (in_msg0.fn_ls + in_msg1.fn_ls);
 

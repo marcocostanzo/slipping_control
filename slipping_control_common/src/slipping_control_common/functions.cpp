@@ -28,6 +28,11 @@ using namespace TooN;
 std::vector<SIGMA_INFO> __SIGMA_INFO__; //FT
 std::vector<GAUSS_INFO> __GAUSS_INFO__; //TAUN
 
+double sign( double n )
+{
+    return (double)((n > 0) - (n < 0));
+}
+
 double pow_signed( double x, double exponent )
 {
     return sign(x)*pow(abs(x), exponent);

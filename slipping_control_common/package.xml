@@ -55,7 +55,6 @@
   <exec_depend>message_runtime</exec_depend>
   <depend>roslib</depend>
 
-  <depend>robotics_toolbox_ros</depend>
   <depend>sun_learning_lib</depend>
   <depend>actionlib_msgs</depend>
 

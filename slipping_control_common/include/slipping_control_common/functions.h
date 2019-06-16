@@ -22,13 +22,14 @@
 #ifndef _SLIPPING_CONTROL_COMMON_FUNCTIONS_
 #define _SLIPPING_CONTROL_COMMON_FUNCTIONS_
 
-#include "GeometryHelper.h"
 #include "learn_algs/learn_algs.h"
 #include "ros/package.h"
 #include "boost/function.hpp"
 #include <boost/bind.hpp>
 #include <boost/algorithm/string.hpp>
 #include <iomanip>
+
+#include "TooN/TooN.h"
 
 #ifndef SUN_COLORS
 #define SUN_COLORS

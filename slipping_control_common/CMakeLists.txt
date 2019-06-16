@@ -10,7 +10,6 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
 message_generation
 std_msgs
-robotics_toolbox_ros
 roslib
 sun_learning_lib
 actionlib_msgs
@@ -99,8 +98,7 @@ catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS 
   message_runtime 
-  std_msgs 
-  robotics_toolbox_ros 
+  std_msgs  
   roslib 
   sun_learning_lib 
   actionlib_msgs

@@ -3,8 +3,23 @@
 int8 MODE_GRIPPER_PIVOTING=1
 int8 MODE_SLIPPING_AVOIDANCE=2
 int8 MODE_DYN_SLIPPING_AVOIDANCE=3
+int8 MODE_OBJECT_PIVOTING=4
 
 int8 mode
+
+# Only for MODE_OBJECT_PIVOTING
+# if the gain is 0, then a default gain will be used
+float64 object_pivoting_gain
+# angles are expressed in [rad]
+# the angle is the angle between the gravity vector 
+# and the vector that connect the grasp_frame and the CoG frame
+float64 desired_angle
+# If not provided, the initial_angle is 0 by default (object in horizontal position)
+float64 initial_angle
+# desired angle, initial angle and initial torque will be converted into desired torque using this formula:
+#                 sin(desired_angle)
+# desired_tau = --------------------- * initial_tau
+#                 sin(initial_angle)
 ---
 #res
 bool success

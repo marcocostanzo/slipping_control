@@ -65,6 +65,11 @@
 //[N/s]
 #define DEFAULT_GRASP_FORCE_SLOPE 2.0
 
+//[m^-1]
+#define DEFAULT_OBJECT_PIVOTING_GAIN 2.0
+//[Nm] 
+#define OBJ_PIV_TAU_EPS 0.005
+
 #define HEADER_PRINT BOLDYELLOW "[" << ros::this_node::getName() << "] " CRESET 
 
 #define HEADER_PRINT_STATE HEADER_PRINT "[" << getStateStr() << "] "
@@ -84,6 +89,7 @@ using namespace std;
 #define STATE_SLIPPING_AVOIDANCE            8
 #define STATE_TO_DYN_SLIPPING_AVOIDANCE     9
 #define STATE_DYN_SLIPPING_AVOIDANCE       10
+#define STATE_OBJECT_PIVOTING              11
 
 class Slipping_Control_AS {
 
@@ -472,6 +478,7 @@ void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
         case STATE_TO_GRIPPER_PIVOTING:
         case STATE_TO_SLIPPING_AVOIDANCE: 
         case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+        case STATE_OBJECT_PIVOTING:
         {
             //Slipping control transition state
             cout << HEADER_PRINT_STATE "[Action Grasp]" BOLDYELLOW "Called executeGraspCB() but state is a SlippingControl transition state..." CRESET << endl;
@@ -494,6 +501,7 @@ void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
                                                  + "|" + getStateStr(STATE_TO_GRIPPER_PIVOTING)
                                                  + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
                                                  + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_OBJECT_PIVOTING)
                                     );
 
             graspActionSetAborted( "Invalid Initial State: " + getStateStr(state_) );
@@ -730,6 +738,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_TO_GRIPPER_PIVOTING:
                 case STATE_TO_SLIPPING_AVOIDANCE:
                 case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+                case STATE_OBJECT_PIVOTING:
                 {
                     //From a slipping control transition state | this should not happen
                     cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_GRIPPER_PIVOTING] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
@@ -768,6 +777,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                                                  + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
                                                  + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
                                                  + "|" + getStateStr(STATE_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_OBJECT_PIVOTING)
                                     );
 
                     slippingControlActionSetAborted("Invalid Initial State = " + getStateStr(state_) );
@@ -806,6 +816,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_TO_GRIPPER_PIVOTING:
                 case STATE_TO_SLIPPING_AVOIDANCE:
                 case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+                case STATE_OBJECT_PIVOTING:
                 {
                     //From a slipping control transi tionstate | this should not happen
                     cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_SLIPPING_AVOIDANCE] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
@@ -844,6 +855,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                                                  + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
                                                  + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
                                                  + "|" + getStateStr(STATE_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_OBJECT_PIVOTING)
                                     );
 
                     slippingControlActionSetAborted("Invalid Initial State = " + getStateStr(state_) );
@@ -883,6 +895,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                 case STATE_TO_GRIPPER_PIVOTING:
                 case STATE_TO_SLIPPING_AVOIDANCE:
                 case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+                case STATE_OBJECT_PIVOTING:
                 {
                     //From a slipping control transi tionstate | this should not happen
                     cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_DYN_SLIPPING_AVOIDANCE] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
@@ -923,6 +936,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
                                                  + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
                                                  + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
                                                  + "|" + getStateStr(STATE_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_OBJECT_PIVOTING)
                                     );
 
                     slippingControlActionSetAborted("Invalid Initial State = " + getStateStr(state_) );
@@ -930,6 +944,74 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
 
             }
             
+            break;
+        }
+
+        case slipping_control_common::SlippingControlGoal::MODE_OBJECT_PIVOTING:
+        {
+
+            cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_OBJECT_PIVOTING]" << endl;
+
+            int prev_state = state_;
+            string resp_str;
+            
+            //Check initial state
+            switch (state_)
+            {
+
+                case STATE_GRASPED:
+                case STATE_GRIPPER_PIVOTING: 
+                case STATE_SLIPPING_AVOIDANCE:
+                case STATE_DYN_SLIPPING_AVOIDANCE: 
+                {
+                    //From a stable state
+                    state_ = STATE_OBJECT_PIVOTING;
+                    //In this case I will reset the dyn_force_controller
+                    if( objectPivoting( goal, resp_str) ){
+                        state_ = prev_state;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted( resp_str );
+                    }
+                    break;
+                }
+
+                case STATE_TO_GRIPPER_PIVOTING:
+                case STATE_TO_SLIPPING_AVOIDANCE:
+                case STATE_TO_DYN_SLIPPING_AVOIDANCE:
+                case STATE_OBJECT_PIVOTING:
+                {
+                    //From a slipping control transi tionstate | this should not happen
+                    cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_OBJECT_PIVOTING] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
+                    state_ = STATE_OBJECT_PIVOTING;
+                    if( objectPivoting( goal, resp_str) ){
+                        state_ = prev_state;
+                        slippingControlActionSetSucceeded();
+                    } else {
+                        slippingControlActionSetAborted( resp_str );
+                    }
+                    break;
+                }
+
+                default:
+                {
+                    //Invalid Initial State
+                    pErrorInvalidStartState("SlippingControl/OBJECT_PIVOTING", 
+                                                 getStateStr(STATE_GRASPED)
+                                                 + "|" + getStateStr(STATE_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_GRIPPER_PIVOTING)
+                                                 + "|" + getStateStr(STATE_TO_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_TO_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_DYN_SLIPPING_AVOIDANCE)
+                                                 + "|" + getStateStr(STATE_OBJECT_PIVOTING)
+                                    );
+
+                    slippingControlActionSetAborted("Invalid Initial State = " + getStateStr(state_) );
+                }
+
+            }
+
             break;
         }
 
@@ -979,19 +1061,21 @@ void read_grasp_force_cb(const sun_ros_msgs::Float64Stamped::ConstPtr& forceMsg)
     b_grasp_force_arrived_ = true;
 }
 
-double f0_m_;
+double f0_m_, tau0_m_;
 bool b_force0_arrived_ = false;
 void read_force0_cb(const slipping_control_common::ContactForcesStamped::ConstPtr& forceMsg)
 {
     f0_m_ = fabs(forceMsg->forces.fn);
+    tau0_m_ = forceMsg->forces.taun;
     b_force0_arrived_ = true;
 }
 
-double f1_m_;
+double f1_m_, tau1_m_;
 bool b_force1_arrived_ = false;
 void read_force1_cb(const slipping_control_common::ContactForcesStamped::ConstPtr& forceMsg)
 {
     f1_m_ = fabs(forceMsg->forces.fn);
+    tau1_m_ = forceMsg->forces.taun;
     b_force1_arrived_ = true;
 }
 
@@ -1102,6 +1186,95 @@ bool goToZeroDeg()
     return true;
 }
 
+inline double getTau()
+{
+    return fabs(tau0_m_ - tau1_m_);
+}
+
+bool objectPivoting( const slipping_control_common::SlippingControlGoalConstPtr &goal, string& resp_str )
+{
+    //cout << HEADER_PRINT_STATE BOLDYELLOW "objectPivoting() is void" CRESET << endl;
+    //remember to change state if something goes wrong
+    //I should check the preemption...
+
+    //Wait a sample of measures
+    subGraspForce_ = nh_.subscribe(topic_grasp_force_str_, 1, &Slipping_Control_AS::read_grasp_force_cb, this);
+    subF0_ = nh_.subscribe(topic_force0_str_, 1, &Slipping_Control_AS::read_force0_cb, this);
+    subF1_ = nh_.subscribe(topic_force1_str_, 1, &Slipping_Control_AS::read_force1_cb, this);
+    b_grasp_force_arrived_ = false;
+    b_force0_arrived_ = false;
+    b_force1_arrived_ = false;
+    while( !b_grasp_force_arrived_ || !b_force0_arrived_ || !b_force1_arrived_ )
+    {
+        if (!ros::ok()) {
+            cout << HEADER_PRINT_STATE BOLDRED " Ros not ok() in objectPivoting()" CRESET << endl;
+            exit(-1);
+            return false;
+        }
+        ros::spinOnce();
+    }
+
+    double fr = grasp_force_m_;
+    double desired_tau  = (sin(goal->desired_angle)/sin(goal->initial_angle)) * getTau(); 
+
+    //Check if task is feasible
+    if(desired_tau > getTau())
+    { //not feasible
+        cout << HEADER_PRINT_STATE " objectPivoting() - " BOLDRED "Can't go up" CRESET << endl;
+        resp_str = "impossible_required_rotation";
+        subGraspForce_.shutdown();
+        return false;
+    }
+
+    //sign (-) needed
+    double gain_local = -1.0/hz_;
+    if(goal->object_pivoting_gain == 0){
+        gain_local *= DEFAULT_OBJECT_PIVOTING_GAIN;
+    } else {
+        gain_local *= goal->object_pivoting_gain;
+    }
+
+    ros::Rate loop_rate(hz_);
+
+    cout << HEADER_PRINT_STATE " objectPivoting() - Initial_Grasp_Force= " << fr << " | Initial_tau= " << getTau() << " Desired_tau= " << desired_tau << endl;
+    while(
+        //Emergency stop
+        !(fr <= fn_ls_free_pivot_)
+        &&
+        //stop condition
+        !( ( desired_tau - getTau() ) > OBJ_PIV_TAU_EPS ) 
+        )
+    {
+        ros::spinOnce();
+        fr = fr - gain_local*(desired_tau - getTau());
+        publish_force_ref(fr);
+        loop_rate.sleep();
+    }
+
+    //Check result
+    //Case emergency stop
+    bool b_return = true;
+    if(fr <= fn_ls_free_pivot_)
+    {
+        cout << HEADER_PRINT_STATE " objectPivoting() - " BOLDRED "Minimum Force reached" CRESET << endl;
+        resp_str = "minimum_force";
+        b_return = false;
+    } 
+    //Case overshoot
+    else if( getTau() < (desired_tau - 3.0*OBJ_PIV_TAU_EPS) )
+    {
+        cout << HEADER_PRINT_STATE " objectPivoting() - " BOLDYELLOW "Overshoot = " << desired_tau - getTau() << CRESET << endl;
+        resp_str = "overshoot";
+        b_return = false;
+    } else {
+        cout << HEADER_PRINT_STATE " objectPivoting() - " GREEN "OK" CRESET << endl;
+    }
+
+    subGraspForce_.shutdown();
+    
+    return b_return;
+}
+
 bool goToSlippingAvoidance()
 {
     cout << HEADER_PRINT_STATE BOLDYELLOW "goToSlippingAvoidance() is void" CRESET << endl;
@@ -1201,6 +1374,9 @@ string getStateStr(int s)
         }
         case STATE_DYN_SLIPPING_AVOIDANCE:{
             return "STATE_DYN_SLIPPING_AVOIDANCE";
+        }
+        case STATE_OBJECT_PIVOTING:{
+            return "STATE_OBJECT_PIVOTING";
         }
         default:{
             return (BOLDRED "INVALID_STATE" CRESET);

@@ -1174,6 +1174,11 @@ bool goToZeroDeg()
     cout << HEADER_PRINT_STATE " goToZeroDeg() - Decreasing grasp force... " << endl;
     while( fr > fn_ls_free_pivot_ )
     {
+        if (!ros::ok()) {
+            cout << HEADER_PRINT_STATE BOLDRED " Ros not ok() in goToZeroDeg()" CRESET << endl;
+            exit(-1);
+            return false;
+        }
         ros::spinOnce();
         fr = fr - gain_local*(fr - fn_ls_free_pivot_);
         publish_force_ref(fr);
@@ -1196,6 +1201,20 @@ bool objectPivoting( const slipping_control_common::SlippingControlGoalConstPtr 
     //cout << HEADER_PRINT_STATE BOLDYELLOW "objectPivoting() is void" CRESET << endl;
     //remember to change state if something goes wrong
     //I should check the preemption...
+
+    if(goal->desired_angle == 0.0)
+    {
+        cout << HEADER_PRINT_STATE "objectPivoting() - desired_angle=0 using goToZeroDeg()" CRESET << endl;
+        if(!goToZeroDeg()) 
+        {
+            cout << HEADER_PRINT_STATE BOLDRED "objectPivoting() - Error in goToZeroDeg()" CRESET << endl;
+            resp_str = "error in goToZeroDeg";
+            return false;
+        } else {
+            cout << HEADER_PRINT_STATE "objectPivoting() - goToZeroDeg() " GREEN "Success" CRESET << endl;
+            return true;
+        }
+    }
 
     //Wait a sample of measures
     subGraspForce_ = nh_.subscribe(topic_grasp_force_str_, 1, &Slipping_Control_AS::read_grasp_force_cb, this);
@@ -1245,6 +1264,11 @@ bool objectPivoting( const slipping_control_common::SlippingControlGoalConstPtr 
         !( ( desired_tau - getTau() ) > OBJ_PIV_TAU_EPS ) 
         )
     {
+        if (!ros::ok()) {
+            cout << HEADER_PRINT_STATE BOLDRED " Ros not ok() in objectPivoting()" CRESET << endl;
+            exit(-1);
+            return false;
+        }
         ros::spinOnce();
         fr = fr - gain_local*(desired_tau - getTau());
         publish_force_ref(fr);

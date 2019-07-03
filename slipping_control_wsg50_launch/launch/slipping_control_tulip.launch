@@ -20,8 +20,8 @@
     <arg name="finger_distance_offset" default="0.0"/>
 
     <!-- Params Low level force control -->
-    <arg name="force_control_gain" default="7.5" />
-    <arg name="force_control_max_force" default="10.0" />
+    <arg name="force_control_gain" default="5.5" />
+    <arg name="force_control_max_force" default="18.5" />
     <arg name="force_control_filter" default="false" />
     <arg name="force_control_cut_freq" default="250.0" />
     <arg name="force_control_rate" default="1000.0" />

@@ -14,7 +14,7 @@ float64 object_pivoting_gain
 # the angle is the angle between the gravity vector 
 # and the vector that connect the grasp_frame and the CoG frame
 float64 desired_angle
-# If not provided, the initial_angle is 0 by default (object in horizontal position)
+# If not provided, the initial_angle is 0 by default (object in vertical position)
 float64 initial_angle
 # desired angle, initial angle and initial torque will be converted into desired torque using this formula:
 #                 sin(desired_angle)

@@ -193,9 +193,9 @@
 	    <arg name="ls_0_topic" value="ls_0"/>
 	    <arg name="ls_1_topic" value="ls_1"/>
 	    <arg name="ls_combined_topic" value="ls_combined"/>
-	    <arg name="kf_extimated_velocity_topic" value="extimated_velocity"/>
-	    <arg name="kf_extimated_state_topic" value="extimated_state"/>
-	    <arg name="kf_extimated_measure_topic" value="extimated_measure"/>
+	    <arg name="obs_extimated_velocity_topic" value="extimated_velocity"/>
+	    <arg name="obs_extimated_state_topic" value="extimated_state"/>
+	    <arg name="obs_extimated_measure_topic" value="extimated_measure"/>
 	    <arg name="dynamic_force_topic" value="dynamic_force"/>
 
 	    <!-- Srv Client -->
@@ -205,7 +205,7 @@
 	    <!-- Srv Server -->
 	    <arg name="ls_0_change_params_service" value="ls_0/change_params"/>
 	    <arg name="ls_1_change_params_service" value="ls_1/change_params"/>
-	    <arg name="kf_set_running_service" value="kf/set_running"/>
+	    <arg name="obs_set_running_service" value="obs/set_running"/>
 	    <arg name="dyn_set_running_service" value="dyn_controller/set_running"/>	
 
 	    <!-- Action Client -->
@@ -238,7 +238,8 @@
 	    <arg name="max_cor_tilde" value="100.0"/>
 
         <!-- PARAMS Observer -->
-        <arg name="kf_frequency" value="2000.0"/>
+        <arg name="use_kalman_filter" value="false">
+        <arg name="obs_frequency" value="2000.0"/>
         <arg name="Io" value="7.4013e-04"/>
         <arg name="Mo" value="0.350"/>
         <arg name="b" value="0.0"/>
@@ -247,7 +248,7 @@
         <arg name="sigma_02" value="50.0"/>
         <!--<arg name="sigma_03" value="$(arg sigma_02)"/>-->
 
-	    <arg name="kf_min_gen_max_force" value="0.001"/>
+	    <arg name="obs_min_gen_max_force" value="0.001"/>
 
         <!-- PARAMS Static Controller -->
 	    <arg name="fn_ls_gain" value="1.1"/>

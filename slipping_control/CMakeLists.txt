@@ -278,11 +278,11 @@ target_link_libraries(slipping_control_as
 )
 #########################################
 #########################################
-#add_executable(observer_velocity_node
-#  src/observer_velocity_node.cpp
-#)
-#add_dependencies(observer_velocity_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-#target_link_libraries(observer_velocity_node
-#  ${catkin_LIBRARIES}
-#)
+add_executable(observer_velocity
+  src/observer_velocity_node.cpp
+)
+add_dependencies(observer_velocity ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(observer_velocity
+  ${catkin_LIBRARIES}
+)
 #########################################

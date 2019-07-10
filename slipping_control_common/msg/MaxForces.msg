@@ -1,4 +1,0 @@
-float64 force_frac
-float64 ft_max
-float64 taun_max
-float64 generalized_max_force

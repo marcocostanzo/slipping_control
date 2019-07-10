@@ -242,47 +242,11 @@ target_link_libraries(dynamic_controller
 )
 #########################################
 #########################################
-add_executable(grasping
-  src/grasping_node.cpp
-)
-add_dependencies(grasping ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(grasping
-  ${catkin_LIBRARIES}
-)
-#########################################
-#########################################
-add_executable(pivoting
-  src/pivoting_node.cpp
-)
-add_dependencies(pivoting ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(pivoting
-  ${catkin_LIBRARIES}
-)
-#########################################
-#########################################
-add_executable(smart_control
-  src/smart_control_node.cpp
-)
-add_dependencies(smart_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(smart_control
-  ${catkin_LIBRARIES}
-)
-#########################################
-#########################################
 add_executable(static_combine
   src/static_combine_node.cpp
 )
 add_dependencies(static_combine ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(static_combine
-  ${catkin_LIBRARIES}
-)
-#########################################
-#########################################
-add_executable(filter_cor
-  src/filter_cor_node.cpp
-)
-add_dependencies(filter_cor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(filter_cor
   ${catkin_LIBRARIES}
 )
 #########################################
@@ -312,4 +276,13 @@ add_dependencies(slipping_control_as ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catki
 target_link_libraries(slipping_control_as
   ${catkin_LIBRARIES}
 )
+#########################################
+#########################################
+#add_executable(observer_velocity_node
+#  src/observer_velocity_node.cpp
+#)
+#add_dependencies(observer_velocity_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#target_link_libraries(observer_velocity_node
+#  ${catkin_LIBRARIES}
+#)
 #########################################

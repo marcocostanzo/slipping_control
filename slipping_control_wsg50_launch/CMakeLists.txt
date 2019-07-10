@@ -198,12 +198,3 @@ ${catkin_INCLUDE_DIRS}
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-#########################################
-add_executable(to_matlab
-  src/to_matlab_node.cpp
-)
-add_dependencies(to_matlab ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(to_matlab
-  ${catkin_LIBRARIES}
-)
-#########################################

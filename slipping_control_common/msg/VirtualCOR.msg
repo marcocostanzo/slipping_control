@@ -1,4 +1,0 @@
-float64 sigma
-float64 virtual_cor_tilde
-float64 virtual_radius
-float64 virtual_cor

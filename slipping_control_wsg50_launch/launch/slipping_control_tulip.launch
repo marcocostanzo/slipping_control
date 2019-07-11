@@ -238,7 +238,7 @@
 	    <arg name="max_cor_tilde" value="100.0"/>
 
         <!-- PARAMS Observer -->
-        <arg name="use_kalman_filter" value="false">
+        <arg name="use_kalman_filter" value="false"/>
         <arg name="obs_frequency" value="2000.0"/>
         <arg name="Io" value="7.4013e-04"/>
         <arg name="Mo" value="0.350"/>

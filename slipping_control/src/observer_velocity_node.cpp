@@ -36,7 +36,7 @@
 #define OBS_DIM_OUT 2
 #define OBS_DIM_IN 1
 
-#define HEADER_PRINT BOLDYELLOW "[Kalman Filter(velocity)]: " CRESET 
+#define HEADER_PRINT BOLDYELLOW "[NN-Observer]: " CRESET 
 
 using namespace std;
 using namespace TooN;
@@ -147,6 +147,7 @@ int main(int argc, char *argv[]){
     
     string path = base_path + "/L.txt";
     L = readFileM(path, OBS_DIM_STATE, OBS_DIM_OUT);
+    cout << HEADER_PRINT << " L= " << endl << L << endl;
 
     rk4 = new RK4(  OBS_DIM_STATE, 
                     OBS_DIM_IN + OBS_DIM_OUT,
@@ -184,7 +185,9 @@ int main(int argc, char *argv[]){
         }
 
         Vector<3> u_rk4 = makeVector( input_vector[0], y_input[0], y_input[1] );
+        rk4->estimateMeanInputs( u_rk4 );
         x_rk4 = rk4->apply_rk4( x_rk4, u_rk4 );
+        rk4->setPrecInput( u_rk4 );
         y_hat_k_k1 = out_fcn(x_rk4, u_rk4);
 
         //Fill Msgs

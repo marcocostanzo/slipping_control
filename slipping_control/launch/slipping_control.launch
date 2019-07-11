@@ -54,9 +54,9 @@
 	<arg name="max_cor_tilde" default="100.0"/>
 
 	<!-- PARAMS Observer -->
-	<arg name="use_kalman_filter" default="true">
-	<arg name="observer_node_type" value="kalman_filter_velocity" if="$(arg use_kalman_filter)">
-	<arg name="observer_node_type" value="observer_velocity" unless="$(arg use_kalman_filter)">
+	<arg name="use_kalman_filter" default="true"/>
+	<arg name="observer_node_type" value="kalman_filter_velocity" if="$(arg use_kalman_filter)"/>
+	<arg name="observer_node_type" value="observer_velocity" unless="$(arg use_kalman_filter)"/>
 	<arg name="obs_frequency" default="2000.0"/>
 	<arg name="Io" default="7.4013e-04"/>
 	<arg name="Mo" default="0.350"/>

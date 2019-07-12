@@ -55,8 +55,6 @@
 
 	<!-- PARAMS Observer -->
 	<arg name="use_kalman_filter" default="true"/>
-	<arg name="observer_node_type" value="kalman_filter_velocity" if="$(arg use_kalman_filter)"/>
-	<arg name="observer_node_type" value="observer_velocity" unless="$(arg use_kalman_filter)"/>
 	<arg name="obs_frequency" default="2000.0"/>
 	<arg name="Io" default="7.4013e-04"/>
 	<arg name="Mo" default="0.350"/>
@@ -169,7 +167,7 @@
 <!--///-->
 <!--Observer-->
 
-	<node name="$(arg observer_node_type)" pkg="slipping_control" type="$(arg observer_node_type)" output="screen">
+	<node name="observer_velocity" pkg="slipping_control" type="observer_velocity" output="screen">
 
 		<!--Params-->
 		<param name="hz" type="double" value="$(arg obs_frequency)"/>
@@ -180,6 +178,8 @@
 		<param name="beta_o3" type="double" value="$(arg beta_o3)"/>
 		<param name="sigma_02" type="double" value="$(arg sigma_02)"/>
 		<param name="sigma_03" type="double" value="$(arg sigma_03)"/>
+
+		<param name="use_kalman_filter" value="$(arg use_kalman_filter)"/>
 
 		<!-- Misc Vars -->
 		<param name="min_gen_max_force" type="double" value="$(arg obs_min_gen_max_force)"/>

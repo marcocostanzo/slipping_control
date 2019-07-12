@@ -1,5 +1,5 @@
 /*
-    ROS node that implements the Observer (relative velocity mode)
+    ROS node that implements the Observer for the relative velocity Kalman Filter or Luenberger
 
     Copyright 2019 Università della Campania Luigi Vanvitelli
 
@@ -20,45 +20,47 @@
 */
 
 #include "ros/ros.h"
+#include "ros/package.h"
 
 #include <sun_ros_msgs/Float64Stamped.h>
 #include "std_srvs/SetBool.h"
 
 #include <Helper.h>
-#include <Discretization/RK4.h>
 #include "slipping_control_common/LSCombinedStamped.h"
 #include "sun_ros_msgs/MultiVectorStamped.h"
 
 #include "slipping_control_common/functions.h"
+
+#include "sun_systems_lib/Observers/Kalman_Filter.h"
+#include "sun_systems_lib/Discretization/RK4.h"
+#include "sun_systems_lib/Continuous/Continuous_System.h"
+#include "sun_systems_lib/Observers/Observer_SS_Incapsuler.h"
+#include "sun_systems_lib/Continuous/Continuous_Luenberger_Observer.h"
 
 
 #define OBS_DIM_STATE 3
 #define OBS_DIM_OUT 2
 #define OBS_DIM_IN 1
 
-#define HEADER_PRINT BOLDYELLOW "[NN-Observer]: " CRESET 
+#define HEADER_PRINT BOLDYELLOW "[Observer(" << (use_kf ? "KF" : "NN") << ")]: " CRESET 
 
 using namespace std;
 using namespace TooN;
 
-RK4* rk4;
-Matrix<OBS_DIM_STATE,OBS_DIM_OUT> L;
-Vector<OBS_DIM_STATE> x_rk4;
 VEL_SYSTEM_INFO ss_info;
-RK4_FCN out_fcn =  boost::bind( vel_sys_h_fcn, _1, _2, boost::ref(ss_info) );
-
-Vector<> ff_rk4(const Vector<>& x, const Vector<>& u);
+Observer_Interface* observer;
+bool use_kf;
 
 Vector<OBS_DIM_IN> input_vector; // u = [ generalizedforce ]
-Vector<OBS_DIM_OUT> y_input = Zeros;
+Vector<OBS_DIM_OUT> y_kf = Zeros;
 
 //Vars
 double MIN_GEN_MAX_FORCE;
 bool running = false;
 
 /* USER FUN */
-void stopFilter();
-void startFilter();
+void stopObserver();
+void startObserver();
 void setInitialConditions();
 /**********************/
 
@@ -81,10 +83,10 @@ void sub_ls_combined(const slipping_control_common::LSCombinedStamped::ConstPtr&
         ss_info.f_max_1 = msg->generalized_max_force1;
     }
 
-    y_input[0] = msg->generalized_force0;
-    y_input[1] = msg->generalized_force1;
+    y_kf[0] = msg->generalized_force0;
+    y_kf[1] = msg->generalized_force1;
     //input_vector[0] = msg->generalized_force;
-    input_vector[0] = y_input[0] + y_input[1];
+    input_vector[0] = y_kf[0] + y_kf[1];
 
 }
 
@@ -95,12 +97,12 @@ bool setRunning_callbk(std_srvs::SetBool::Request  &req,
 	if(req.data){
 
         if(!running){
-            startFilter();
+            startObserver();
 		    cout << HEADER_PRINT GREEN "RE-STARTED!" CRESET << endl;
         }
 
 	} else{
-        stopFilter();
+        stopObserver();
 		cout << HEADER_PRINT YELLOW "Stopped!" CRESET << endl;
     }
 
@@ -110,7 +112,7 @@ bool setRunning_callbk(std_srvs::SetBool::Request  &req,
 
 int main(int argc, char *argv[]){
     
-    ros::init(argc, argv, "kalman_filter");
+    ros::init(argc, argv, "observer_velocity");
 
     ros::NodeHandle nh_private("~");
     ros::NodeHandle nh_public;
@@ -127,6 +129,8 @@ int main(int argc, char *argv[]){
     nh_private.param( "sigma_03" , ss_info.sigma_03, 1.0E2 );
     nh_private.param( "min_gen_max_force" , MIN_GEN_MAX_FORCE, 0.001 );
 
+    nh_private.param( "use_kalman_filter" , use_kf, false );
+
     string ls_combined_tipic_str("");
     nh_private.param( "ls_combined_tipic" , ls_combined_tipic_str, string("ls_combined") );
 
@@ -141,20 +145,68 @@ int main(int argc, char *argv[]){
     nh_private.param("set_running_service" , set_running_service_str, string("set_running") );
     /******************/
 
-    string base_path("");
-    base_path = ros::package::getPath("slipping_control");
-    base_path += "/OBS_VELOCITY";
-    
-    string path = base_path + "/L.txt";
-    L = readFileM(path, OBS_DIM_STATE, OBS_DIM_OUT);
-    cout << HEADER_PRINT << " L= " << endl << L << endl;
+    if( use_kf ){
 
-    rk4 = new RK4(  OBS_DIM_STATE, 
-                    OBS_DIM_IN + OBS_DIM_OUT,
-                    ff_rk4, 
-                    NULL, 
-                    1.0/Hz 
+        string base_path("");
+        base_path = ros::package::getPath("slipping_control");
+        base_path += "/KF_VELOCITY";
+        
+        string path = base_path + "/W.txt";
+        Matrix<OBS_DIM_STATE,OBS_DIM_STATE> W = readFileM(path, OBS_DIM_STATE, OBS_DIM_STATE);
+        cout << HEADER_PRINT << "W = " << endl << W << endl;
+        W = W * pow(1.0/Hz , 2.0);
+
+        path = base_path + "/V.txt";
+        Matrix<OBS_DIM_OUT,OBS_DIM_OUT> V = readFileM(path, OBS_DIM_OUT, OBS_DIM_OUT);
+        cout << HEADER_PRINT << "V = " << endl << V << endl;
+
+        observer = new Kalman_Filter(  
+                    RK4(
+                        Continuous_System( 
+                            OBS_DIM_STATE, 
+                            OBS_DIM_OUT, 
+                            OBS_DIM_IN, 
+                            boost::bind( vel_sys_f_fcn_cont, _1, _2, boost::ref(ss_info) ), 
+                            boost::bind( vel_sys_h_fcn, _1, _2, boost::ref(ss_info) ), 
+                            boost::bind( vel_sys_FF_fcn_cont, _1, _2, boost::ref(ss_info) ), 
+                            boost::bind( vel_sys_HH_fcn, _1, _2, boost::ref(ss_info) ) 
+                            ),
+                        1.0/Hz,
+                        false //<- true to use u_n_1_ in RK4
+                        ),
+                    W,
+                    V
                     );
+    } else {
+
+        string base_path("");
+        base_path = ros::package::getPath("slipping_control");
+        base_path += "/OBS_VELOCITY";
+        
+        string path = base_path + "/L.txt";
+        Matrix<> L = readFileM(path, OBS_DIM_STATE, OBS_DIM_OUT);
+        cout << HEADER_PRINT << " L= " << endl << L << endl;
+
+        observer = new Observer_SS_Incapsuler( 
+                    RK4(
+                        Continuous_Luenberger_Observer(
+                            Continuous_System( 
+                                OBS_DIM_STATE, 
+                                OBS_DIM_OUT, 
+                                OBS_DIM_IN, 
+                                boost::bind( vel_sys_f_fcn_cont, _1, _2, boost::ref(ss_info) ), 
+                                boost::bind( vel_sys_h_fcn, _1, _2, boost::ref(ss_info) ), 
+                                boost::bind( vel_sys_FF_fcn_cont, _1, _2, boost::ref(ss_info) ), 
+                                boost::bind( vel_sys_HH_fcn, _1, _2, boost::ref(ss_info) ) 
+                            ),//Continuous_System 
+                            L
+                        ),//Continuous_Luenberger_Observer
+                        1.0/Hz,
+                        false //<- true to use u_n_1_ in RK4
+                    )//RK4
+                    );//Observer_SS_Incapsuler
+
+    }
 
     ros::ServiceServer serviceSetRunning = nh_public.advertiseService(set_running_service_str, setRunning_callbk);
 
@@ -184,17 +236,14 @@ int main(int argc, char *argv[]){
             continue;
         }
 
-        Vector<3> u_rk4 = makeVector( input_vector[0], y_input[0], y_input[1] );
-        rk4->estimateMeanInputs( u_rk4 );
-        x_rk4 = rk4->apply_rk4( x_rk4, u_rk4 );
-        rk4->setPrecInput( u_rk4 );
-        y_hat_k_k1 = out_fcn(x_rk4, u_rk4);
+        //observer->pushPrecInput(); <-- expose system_ in Observer_SS_Incapsuler/Kalman_Filter to implement this. remember to set true in the constructor RK4
+        y_hat_k_k1 = observer->obs_apply( y_kf, input_vector );
 
         //Fill Msgs
-        ext_vel_msg.data = x_rk4[0];
-        ext_state_msg.data.data[0] = x_rk4[0];
-        ext_state_msg.data.data[1] = x_rk4[1];
-        ext_state_msg.data.data[2] = x_rk4[2];
+        ext_vel_msg.data = observer->getState()[0];
+        ext_state_msg.data.data[0] = observer->getState()[0];
+        ext_state_msg.data.data[1] = observer->getState()[1];
+        ext_state_msg.data.data[2] = observer->getState()[2];
         ext_measure_msg.data.data[0] = y_hat_k_k1[0];
         ext_measure_msg.data.data[1] = y_hat_k_k1[1];
         ext_measure_msg.header.stamp = ros::Time::now();
@@ -202,7 +251,7 @@ int main(int argc, char *argv[]){
         ext_vel_msg.header.stamp = ext_measure_msg.header.stamp;
 
         /*Security check*/
-        if(     isnan(x_rk4[0]) || isnan(x_rk4[1]) || isnan(x_rk4[2]) )
+        if(     isnan(observer->getState()[0]) || isnan(observer->getState()[1]) || isnan(observer->getState()[2]) )
         {
                 cout << HEADER_PRINT << BOLDRED "NANs... EXIT..." CRESET << endl;
                 ext_vel_msg.data = 0.0;
@@ -226,27 +275,22 @@ int main(int argc, char *argv[]){
 
 /* USER FUN IMPL */
 
-void stopFilter(){
-    x_rk4 = Zeros;;
+void stopObserver(){
+    observer->reset();
     running = false;
 }
-void startFilter(){
-    x_rk4 = Zeros;;
+void startObserver(){
+    observer->reset();
     setInitialConditions();
     running = true;
 }
 
 void setInitialConditions(){
     
-    x_rk4 = makeVector( 0.0, y_input[0]/ss_info.sigma_02, y_input[0]/ss_info.sigma_03 ) ;
-    rk4->setPrecInput(  makeVector( input_vector[0], y_input[0], y_input[1] ) );
+    observer->reset();
+    observer->setState( makeVector( 0.0, y_kf[0]/ss_info.sigma_02, y_kf[0]/ss_info.sigma_03 ) ) ;
+    //observer->setPrecInput( input_vector ); <-- expose system_ in Observer_SS_Incapsuler/Kalman_Filter to implement this
 
-}
-
-
-Vector<> ff_rk4(const Vector<>& x, const Vector<>& u) {
-    return vel_sys_f_fcn_cont(  x, u.slice(0,1), ss_info)
-            + L*(u.slice(1,2) - out_fcn(x, u.slice(0,1) ) );
 }
 
 /*******************/

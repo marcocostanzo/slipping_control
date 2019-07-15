@@ -224,15 +224,6 @@ target_link_libraries(compute_ls
 )
 #########################################
 #########################################
-add_executable(kalman_filter_velocity
-  src/kalman_filter_velocity_node.cpp
-)
-add_dependencies(kalman_filter_velocity ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(kalman_filter_velocity
-  ${catkin_LIBRARIES}
-)
-#########################################
-#########################################
 add_executable(dynamic_controller
   src/dynamic_controller_node.cpp
 )

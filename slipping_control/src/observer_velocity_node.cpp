@@ -237,7 +237,7 @@ int main(int argc, char *argv[]){
         }
 
         //observer->pushPrecInput(); <-- expose system_ in Observer_SS_Incapsuler/Kalman_Filter to implement this. remember to set true in the constructor RK4
-        y_hat_k_k1 = observer->obs_apply( y_kf, input_vector );
+        y_hat_k_k1 = observer->obs_apply( input_vector, y_kf  );
 
         //Fill Msgs
         ext_vel_msg.data = observer->getState()[0];
@@ -253,11 +253,13 @@ int main(int argc, char *argv[]){
         /*Security check*/
         if(     isnan(observer->getState()[0]) || isnan(observer->getState()[1]) || isnan(observer->getState()[2]) )
         {
-                cout << HEADER_PRINT << BOLDRED "NANs... EXIT..." CRESET << endl;
+                //cout << HEADER_PRINT << BOLDRED "NANs... EXIT..." CRESET << endl;
+                cout << HEADER_PRINT << BOLDRED "NANs... RESET! ..." CRESET << endl;
                 ext_vel_msg.data = 0.0;
                 pubExtVel.publish(ext_vel_msg);
                 loop_rate.sleep();
-                exit(-1);
+                setInitialConditions();
+                //exit(-1);
         }
 
         //Publish

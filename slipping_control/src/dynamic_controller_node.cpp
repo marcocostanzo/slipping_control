@@ -171,7 +171,17 @@ int main(int argc, char *argv[]){
             
             //Apply control  ---> fabs(i+p)  or fabs(i)+fabs(p) ?
             fnd.data = fabs( tf_pseudo_integrator->apply(input_data) + p_gain * input_data );  
-            fnd.header.stamp = ros::Time::now();        
+            fnd.header.stamp = ros::Time::now();
+
+            /*Security check*/
+            if( isnan(fnd.data) || isinf(fnd.data) )
+            {
+                    cout << HEADER_PRINT << BOLDRED "INF/NAN... EXIT! ..." CRESET << endl;
+                    fnd.data = 0.0;
+                    outPub.publish(fnd);
+                    loop_rate.sleep();
+                    exit(-1);
+            }
             
             outPub.publish(fnd);
 

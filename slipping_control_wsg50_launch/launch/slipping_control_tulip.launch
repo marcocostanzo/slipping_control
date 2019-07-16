@@ -52,6 +52,15 @@
 
     <!--Action Server-->
     <arg name="compute_bias_action" value="compute_bias_action" />
+
+    <!--Grasp AS-->
+    <arg name="pre_grasp_velocity" value="8.0" /> <!--[mm/s]-->
+    <arg name="pre_grasp_force" if="$(arg stiff_use_linear_model)" value="$(eval 0.001 * arg('stiff_1') * arg('pre_grasp_velocity')/arg('force_control_gain'))" />
+    <arg name="pre_grasp_force" unless="$(arg stiff_use_linear_model)" value="$(eval arg('stiff_2') * pow( 0.001 * arg('pre_grasp_velocity') / arg('force_control_gain') , 2 ) )" />
+<!--
+    v=1e3*c*invs(f) = 1e3*c*f/ks => f = 1e-3*ks*v/c 
+                    = 1e3*c*sqrt(f/ks) => f = (( 1e-3*v/c )^2)*ks
+                -->
     
 
     <group ns="/$(arg gripper_model)">
@@ -255,16 +264,16 @@
         <arg name="min_fn" value="1.0"/>	
 
         <!-- PARAMS Dyn Controller -->
-        <arg name="dyn_frequency" value="2000.0"/>
-        <arg name="dyn_i_gain" value="2.5"/>
-        <arg name="dyn_p_gain" value="0.65"/>
-        <arg name="dyn_integrator_dc_gain" value="3.5"/>
+        <arg name="dyn_frequency" value="1000.0"/>
+        <arg name="dyn_i_gain" value="5.0"/>
+        <arg name="dyn_p_gain" value="1.3"/>
+        <arg name="dyn_integrator_dc_gain" value="7.0"/>
         <arg name="max_fnd" value="10.0"/>
 
         <!-- PARAMS Slipping Control Action Server -->
         <arg name="as_rate" value="500.0"/>
         <arg name="contact_force_thr" value="0.8"/>
-        <arg name="before_contact_force" value="1.7"/>
+        <arg name="before_contact_force" value="$(arg pre_grasp_force)"/>
 
     </include>
 

@@ -75,6 +75,7 @@
 	<arg name="dyn_i_gain" default="50.0"/>
 	<arg name="dyn_p_gain" default="13.0"/>
 	<arg name="dyn_integrator_dc_gain" default="35.0"/>
+	<arg name="max_fnd" default="10.0"/>
 
 	<!-- PARAMS Slipping Control Action Server -->
 	<arg name="as_rate" default="500.0"/>
@@ -207,6 +208,8 @@
 		<param name="i_gain" value="$(arg dyn_i_gain)"/>
 		<param name="p_gain" value="$(arg dyn_p_gain)"/>
 		<param name="integrator_dc_gain" value="$(arg dyn_integrator_dc_gain)"/>
+
+		<param name="max_fnd" value="$(arg max_fnd)"/>
 
 		<!-- Sub -->
 		<param name="in_topic" value="$(arg obs_extimated_velocity_topic)"/>

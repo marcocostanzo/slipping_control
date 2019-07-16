@@ -56,6 +56,11 @@
 
 using namespace std;
 
+template <typename T> int sgn(T val)
+{
+    return (T(0) < val) - (val < T(0));
+}
+
 ros::Publisher outPub;
 ros::Subscriber in_sub;
 
@@ -141,6 +146,9 @@ int main(int argc, char *argv[]){
     nh_private.param("p_gain" , p_gain, 13.0 );
     nh_private.param("integrator_dc_gain" , integrator_dc_gain, 35.0 );
 
+    double MAX_FND;
+    nh_private.param("max_fnd" , MAX_FND, 10.0 );
+
     double Hz;
     nh_private.param("hz" , Hz, 2000.0 );
     double Ts = 1.0/Hz;
@@ -172,6 +180,18 @@ int main(int argc, char *argv[]){
             //Apply control  ---> fabs(i+p)  or fabs(i)+fabs(p) ?
             fnd.data = fabs( tf_pseudo_integrator->apply(input_data) + p_gain * input_data );  
             fnd.header.stamp = ros::Time::now();
+
+            /* Check max */
+            if(fnd.data > MAX_FND)
+            {
+                fnd.data = MAX_FND;
+                double last_i_out = tf_pseudo_integrator->getLastOutput();
+                if( fabs(last_i_out) > MAX_FND )
+                {
+                    tf_pseudo_integrator->setOutput( MAX_FND*sgn(last_i_out) );
+                    ROS_WARN_THROTTLE( 10 , HEADER_PRINT BOLDYELLOW "Max FND!" CRESET );
+                }
+            }
 
             /*Security check*/
             if( isnan(fnd.data) || isinf(fnd.data) )

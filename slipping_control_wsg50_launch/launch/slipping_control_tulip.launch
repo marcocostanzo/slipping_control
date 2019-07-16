@@ -259,6 +259,7 @@
         <arg name="dyn_i_gain" value="2.5"/>
         <arg name="dyn_p_gain" value="0.65"/>
         <arg name="dyn_integrator_dc_gain" value="3.5"/>
+        <arg name="max_fnd" value="10.0"/>
 
         <!-- PARAMS Slipping Control Action Server -->
         <arg name="as_rate" value="500.0"/>

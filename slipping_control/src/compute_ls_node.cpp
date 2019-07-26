@@ -20,12 +20,12 @@
 */
 
 #include "ros/ros.h"
-#include "slipping_control_common/ContactForcesStamped.h"
-#include "slipping_control_common/LSStamped.h"
+#include "slipping_control_msgs/ContactForcesStamped.h"
+#include "slipping_control_msgs/LSStamped.h"
 #include "slipping_control_common/functions.h"
-#include "slipping_control_common/ChLSParams.h"
+#include "slipping_control_msgs/ChLSParams.h"
 //#include "Helper.h"
-//#include "slipping_control_common/SetMu.h"
+//#include "slipping_control_msgs/SetMu.h"
 
 //#define DEBUG_FZERO
 #define LS_USE_QUADRANT_1_4
@@ -38,7 +38,7 @@
 using namespace std;
 
 //Msgs
-slipping_control_common::LSStamped ls_msg;
+slipping_control_msgs::LSStamped ls_msg;
 
 //Publishers
 ros::Publisher pubLS;
@@ -51,7 +51,7 @@ std::vector<GAUSS_INFO>* gauss_info; //TAUN
 //Cor_tilde
 double MAX_COR_TILDE;
 
-void contact_force_Callback (const slipping_control_common::ContactForcesStamped::ConstPtr& msg) {
+void contact_force_Callback (const slipping_control_msgs::ContactForcesStamped::ConstPtr& msg) {
 
     //Sigma
     ls_msg.sigma = calculateSigma( msg->forces.ft, msg->forces.taun, ls_info );
@@ -149,8 +149,8 @@ void contact_force_Callback (const slipping_control_common::ContactForcesStamped
 
 }
 
-bool set_params_service_callbk(slipping_control_common::ChLSParams::Request  &req, 
-   		 		                slipping_control_common::ChLSParams::Response &res)
+bool set_params_service_callbk(slipping_control_msgs::ChLSParams::Request  &req, 
+   		 		                slipping_control_msgs::ChLSParams::Response &res)
 {
 
     cout << HEADER_PRINT "Change LS parameters..." << endl;
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
     ros::Subscriber subContact = nh_public.subscribe( contact_force_topic_str, 1, contact_force_Callback);
 
     //Pubs
-    pubLS = nh_public.advertise<slipping_control_common::LSStamped>(ls_topic_str, 1);
+    pubLS = nh_public.advertise<slipping_control_msgs::LSStamped>(ls_topic_str, 1);
 
     initLS_model(ls_info.k, ros::package::getPath("slipping_control_common") + "/LS_models/"); //<-- error in there is no file with that k
     LS_model_get_ref(sigma_info, gauss_info);

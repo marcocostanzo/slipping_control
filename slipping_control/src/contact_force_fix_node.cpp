@@ -22,7 +22,7 @@
 #include "ros/ros.h"
 
 #include "std_msgs/Int8.h"
-#include "slipping_control_common/ContactForcesStamped.h"
+#include "slipping_control_msgs/ContactForcesStamped.h"
 #include "Helper.h"
 
 #define SIGN_FIX_TAUN_TRIGGER 0.007
@@ -60,7 +60,7 @@ bool schmitt_t_tau0_state = true;
 bool schmitt_t_tau1_state = true;
 double tau0_abs = 0.0, tau1_abs = 0.0;
 
-void wrench0CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
+void wrench0CB( const slipping_control_msgs::ContactForcesStamped::Ptr& msg ){
 
     tau0_abs = fabs(msg->forces.taun);
 
@@ -90,7 +90,7 @@ void wrench0CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
 
 }
 
-void wrench1CB( const slipping_control_common::ContactForcesStamped::Ptr& msg ){
+void wrench1CB( const slipping_control_msgs::ContactForcesStamped::Ptr& msg ){
 
     tau1_abs = fabs(msg->forces.taun);
 
@@ -132,8 +132,8 @@ int main(int argc, char *argv[])
     ros::Subscriber subContact0 = nh_public.subscribe( input_topic0_str, 1, wrench0CB);
     ros::Subscriber subContact1 = nh_public.subscribe( input_topic1_str, 1, wrench1CB);
 
-    pubContact0 = nh_public.advertise<slipping_control_common::ContactForcesStamped>(output_topic0_str, 1);
-    pubContact1 = nh_public.advertise<slipping_control_common::ContactForcesStamped>(output_topic1_str, 1);
+    pubContact0 = nh_public.advertise<slipping_control_msgs::ContactForcesStamped>(output_topic0_str, 1);
+    pubContact1 = nh_public.advertise<slipping_control_msgs::ContactForcesStamped>(output_topic1_str, 1);
     
     ros::spin();
 

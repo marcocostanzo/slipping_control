@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 roscpp
 geometry_msgs
 slipping_control_common
+slipping_control_msgs
 sun_helper_lib
 sun_learning_lib
 sun_systems_lib

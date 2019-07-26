@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(slipping_control_common)
+project(slipping_control_msgs)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -8,8 +8,9 @@ add_compile_options(-std=c++11)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-sun_learning_lib
-roslib
+message_generation
+std_msgs
+actionlib_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -46,20 +47,20 @@ roslib
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(DIRECTORY msg)
+ add_message_files(DIRECTORY msg)
 
 ## Generate services in the 'srv' folder
-# add_service_files(DIRECTORY srv)
+ add_service_files(DIRECTORY srv)
 
 ## Generate actions in the 'action' folder
-# add_action_files(DIRECTORY action)
+ add_action_files(DIRECTORY action)
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs 
-#   actionlib_msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs 
+   actionlib_msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -91,11 +92,12 @@ roslib
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS    
-  roslib 
-  sun_learning_lib 
+#  INCLUDE_DIRS include
+ # LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS 
+  message_runtime 
+  std_msgs    
+  actionlib_msgs
 #  DEPENDS system_lib
 )
 
@@ -105,15 +107,15 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(
- include
- ${catkin_INCLUDE_DIRS}
-)
+#include_directories(
+# include
+# ${catkin_INCLUDE_DIRS}
+#)
 
 ## Declare a C++ library
- add_library(${PROJECT_NAME}
-   src/${PROJECT_NAME}/functions.cpp
- )
+# add_library(${PROJECT_NAME}
+#   src/${PROJECT_NAME}/functions.cpp
+# )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

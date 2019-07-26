@@ -22,13 +22,13 @@
 #include "ros/ros.h"
 
 #include "geometry_msgs/WrenchStamped.h"
-#include "slipping_control_common/ContactForcesStamped.h"
+#include "slipping_control_msgs/ContactForcesStamped.h"
 
 using namespace std;
 
 ros::Publisher pubContact;
 
-slipping_control_common::ContactForcesStamped contact_force_msg;
+slipping_control_msgs::ContactForcesStamped contact_force_msg;
 void wrenchCB( const geometry_msgs::WrenchStamped::ConstPtr& msg ){
 
     contact_force_msg.header = msg->header;
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 
     ros::Subscriber subWrench = nh_public.subscribe( input_topic_str, 1, wrenchCB);
 
-    pubContact = nh_public.advertise<slipping_control_common::ContactForcesStamped>(output_topic_str, 1);
+    pubContact = nh_public.advertise<slipping_control_msgs::ContactForcesStamped>(output_topic_str, 1);
     
     ros::spin();
 

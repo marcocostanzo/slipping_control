@@ -21,7 +21,7 @@
 
 #include "ros/ros.h"
 
-#include "slipping_control_common/ContactForcesStamped.h"
+#include "slipping_control_msgs/ContactForcesStamped.h"
 #include "sun_systems_lib/TF/TF_MIMO_DIAGONAL.h"
 #include "sun_systems_lib/TF/TF_FIRST_ORDER_FILTER.h"
 
@@ -29,12 +29,12 @@ using namespace std;
 using namespace TooN;
 
 ros::Publisher pubContactFilter;
-slipping_control_common::ContactForcesStamped msgContactFilter;
+slipping_control_msgs::ContactForcesStamped msgContactFilter;
 Vector<3> contact_vec = Zeros;
 Vector<3> contact_vec_filter = Zeros;
 
 //==========TOPICs CALLBKs=========//
-void readContact( const slipping_control_common::ContactForcesStamped::ConstPtr& msg  ){
+void readContact( const slipping_control_msgs::ContactForcesStamped::ConstPtr& msg  ){
 
     contact_vec[0] = msg->forces.ft;
     contact_vec[1] = msg->forces.taun;
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 
     /*******INIT ROS PUB**********/
 	//Float_filter pub
-	pubContactFilter = nh_public.advertise<slipping_control_common::ContactForcesStamped>( str_out_topic, 1);
+	pubContactFilter = nh_public.advertise<slipping_control_msgs::ContactForcesStamped>( str_out_topic, 1);
     /***************************/
 
     /*******INIT ROS SUB**********/

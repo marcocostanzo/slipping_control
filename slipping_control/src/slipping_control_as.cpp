@@ -24,17 +24,19 @@
 #include "std_srvs/Empty.h"
 #include "std_srvs/SetBool.h"
 
-#include <slipping_control_common/ContactForcesStamped.h>
+#include <slipping_control_msgs/ContactForcesStamped.h>
 #include <sun_ros_msgs/Float64Stamped.h>
-#include "slipping_control_common/LSCombinedStamped.h"
+#include "slipping_control_msgs/LSCombinedStamped.h"
 
-#include <slipping_control_common/HomeGripperAction.h>
+#include <slipping_control_msgs/HomeGripperAction.h>
 #include <sun_tactile_common/ComputeBiasAction.h>
-#include <slipping_control_common/GraspAction.h>
-#include <slipping_control_common/SlippingControlAction.h>
+#include <slipping_control_msgs/GraspAction.h>
+#include <slipping_control_msgs/SlippingControlAction.h>
 
 #include <actionlib/server/simple_action_server.h>
 #include <actionlib/client/simple_action_client.h>
+
+#include <slipping_control_msgs/GetState.h>
 
 #ifndef SUN_COLORS
 #define SUN_COLORS
@@ -130,12 +132,17 @@ ros::ServiceClient service_client_force_controller_set_running_;
 ros::Publisher pub_desired_force_;
 
 /*************************************
+    Server Get State
+***************************************/
+ros::ServiceServer serviceGetState;
+
+/*************************************
     Action Homing
 ***************************************/
 /*
     SimpleActionServer 
 */
-actionlib::SimpleActionServer<slipping_control_common::HomeGripperAction> home_gripper_as_;
+actionlib::SimpleActionServer<slipping_control_msgs::HomeGripperAction> home_gripper_as_;
 
 /*************************************
     Action Remove Bias
@@ -155,7 +162,7 @@ actionlib::SimpleActionClient<sun_tactile_common::ComputeBiasAction> ac_compute_
 /*
     SimpleActionServer 
 */
-actionlib::SimpleActionServer<slipping_control_common::GraspAction> grasp_as_;
+actionlib::SimpleActionServer<slipping_control_msgs::GraspAction> grasp_as_;
 
 /*
     Subscribers
@@ -173,7 +180,7 @@ double CONTACT_FORCE_THR_, BEFORE_CONTACT_FORCE_;
 /*
     SimpleActionServer 
 */
-actionlib::SimpleActionServer<slipping_control_common::SlippingControlAction> slipping_control_as_;
+actionlib::SimpleActionServer<slipping_control_msgs::SlippingControlAction> slipping_control_as_;
 /*
     Subscribers
 */
@@ -213,7 +220,8 @@ Slipping_Control_AS(
     const std::string& action_home_gripper,
     const std::string& action_compute_bias,
     const std::string& action_grasp,
-    const std::string& action_slipping_control
+    const std::string& action_slipping_control,
+    const std::string& get_state_service_str
 ):
     nh_(nh),
     hz_(hz),
@@ -237,6 +245,18 @@ Slipping_Control_AS(
     service_client_force_controller_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_force_controller_set_running);
     service_client_observer_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_observer_set_running);
     service_client_dyn_controller_set_running_ = nh_.serviceClient<std_srvs::SetBool>(service_clinet_dyn_controller_set_running);
+
+    serviceGetState = nh_.advertiseService(get_state_service_str, &Slipping_Control_AS::serviceGetStateCB, this);
+
+}
+
+bool serviceGetStateCB(slipping_control_msgs::GetState::Request  &req, 
+   		 		slipping_control_msgs::GetState::Response &res){
+
+    res.state = state_;
+
+    return true;
+
 }
 
 /*
@@ -268,7 +288,7 @@ protected:
     Action Homing
 ***************************************/
 
-void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPtr &goal )
+void executeHomeGripperCB( const slipping_control_msgs::HomeGripperGoalConstPtr &goal )
 {
 
     cout << HEADER_PRINT_STATE "[Action HomeGripper] Begin." << endl;
@@ -299,7 +319,7 @@ void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPt
 
         cout << HEADER_PRINT_STATE << "[Action HomeGripper] Homing " GREEN "Done" CRESET << endl;
 
-        slipping_control_common::HomeGripperResult result;
+        slipping_control_msgs::HomeGripperResult result;
         result.success = true;
         if(b_error){
             //Homing ok but some error occurs
@@ -319,7 +339,7 @@ void executeHomeGripperCB( const slipping_control_common::HomeGripperGoalConstPt
         //Fail to send homing command
         cout << HEADER_PRINT_STATE << "[Action HomeGripper] " BOLDRED "Fail to send homing command" CRESET << endl;
         state_ = STATE_UNDEFINED;
-        slipping_control_common::HomeGripperResult result;
+        slipping_control_msgs::HomeGripperResult result;
         result.success = false;
         result.msg = "Fail to send Home command";
         cout << HEADER_PRINT_STATE << "[Action HomeGripper] " RED "Aborted" CRESET << endl;
@@ -443,7 +463,7 @@ void compute_bias_feedbackCb(const sun_tactile_common::ComputeBiasFeedbackConstP
 ***************************************/
 
 bool b_grasping_preemted_ = false;
-void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
+void executeGraspCB( const slipping_control_msgs::GraspGoalConstPtr &goal )
 {
 
     cout << HEADER_PRINT_STATE "[Action Grasp] Called." << endl;
@@ -512,7 +532,7 @@ void executeGraspCB( const slipping_control_common::GraspGoalConstPtr &goal )
 
 void graspActionSetAborted(const string& msg  = string("Aborted") )
 {
-    slipping_control_common::GraspResult result;
+    slipping_control_msgs::GraspResult result;
     result.success = false;
     result.msg = msg;
     cout << HEADER_PRINT_STATE << "[Action Grasp] " RED "Aborted" CRESET << endl;
@@ -521,7 +541,7 @@ void graspActionSetAborted(const string& msg  = string("Aborted") )
 
 void graspActionSetPreempted(const string& msg = string("Preempted"))
 {
-    slipping_control_common::GraspResult result;
+    slipping_control_msgs::GraspResult result;
     result.success = false;
     result.msg = msg;
     cout << HEADER_PRINT_STATE << "[Action Grasp] " BOLDYELLOW "Preempted" CRESET << endl;
@@ -536,13 +556,13 @@ void graspActionPublishForce( double force )
         force_ref_msg.header.stamp = ros::Time::now();
         pub_desired_force_.publish(force_ref_msg);
 
-        slipping_control_common::GraspFeedback feedback_msg;
+        slipping_control_msgs::GraspFeedback feedback_msg;
         feedback_msg.reference_force = force;
         grasp_as_.publishFeedback(feedback_msg);
     }
 }
 
-void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
+void doGraspingAction(const slipping_control_msgs::GraspGoalConstPtr &goal)
 {
 
     cout << HEADER_PRINT_STATE "[Action Grasp] Begin." << endl;
@@ -660,7 +680,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
 
     state_ = STATE_GRASPED;
 
-    slipping_control_common::GraspResult result;
+    slipping_control_msgs::GraspResult result;
     result.success = true;
     result.msg = "OK";
     cout << HEADER_PRINT_STATE << "[Action Grasp] " GREEN "Succeeded" CRESET << endl;
@@ -676,7 +696,7 @@ void doGraspingAction(const slipping_control_common::GraspGoalConstPtr &goal)
 
 void slippingControlActionSetAborted(const string& msg  = string("Aborted") )
 {
-    slipping_control_common::SlippingControlResult result;
+    slipping_control_msgs::SlippingControlResult result;
     result.success = false;
     result.msg = msg;
     cout << HEADER_PRINT_STATE << "[Action SlippingControl] " RED "Aborted" CRESET << endl;
@@ -685,7 +705,7 @@ void slippingControlActionSetAborted(const string& msg  = string("Aborted") )
 
 void slippingControlActionSetPreempted(const string& msg = string("Preempted"))
 {
-    slipping_control_common::SlippingControlResult result;
+    slipping_control_msgs::SlippingControlResult result;
     result.success = false;
     result.msg = msg;
     cout << HEADER_PRINT_STATE << "[Action SlippingControl] " BOLDYELLOW "Preempted" CRESET << endl;
@@ -694,7 +714,7 @@ void slippingControlActionSetPreempted(const string& msg = string("Preempted"))
 
 void slippingControlActionSetSucceeded(const string& msg = string("Succeeded"))
 {
-    slipping_control_common::SlippingControlResult result;
+    slipping_control_msgs::SlippingControlResult result;
     result.success = true;
     result.state = state_;
     result.msg = msg;
@@ -702,7 +722,7 @@ void slippingControlActionSetSucceeded(const string& msg = string("Succeeded"))
     slipping_control_as_.setSucceeded(result);
 }
 
-void executeSlippingControlCB( const slipping_control_common::SlippingControlGoalConstPtr &goal )
+void executeSlippingControlCB( const slipping_control_msgs::SlippingControlGoalConstPtr &goal )
 {
 
     cout << HEADER_PRINT_STATE << "[Action SlippingControl] Called." << endl;
@@ -710,7 +730,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
     switch (goal->mode)
     {
 
-        case slipping_control_common::SlippingControlGoal::MODE_GRIPPER_PIVOTING:
+        case slipping_control_msgs::SlippingControlGoal::MODE_GRIPPER_PIVOTING:
         {
 
             cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_GRIPPER_PIVOTING]" << endl;
@@ -788,7 +808,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
             break;
         }
 
-        case slipping_control_common::SlippingControlGoal::MODE_SLIPPING_AVOIDANCE:
+        case slipping_control_msgs::SlippingControlGoal::MODE_SLIPPING_AVOIDANCE:
         {
 
             cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_SLIPPING_AVOIDANCE]" << endl;
@@ -867,7 +887,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
         }
 
 
-        case slipping_control_common::SlippingControlGoal::MODE_DYN_SLIPPING_AVOIDANCE:
+        case slipping_control_msgs::SlippingControlGoal::MODE_DYN_SLIPPING_AVOIDANCE:
         {
 
             cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_DYN_SLIPPING_AVOIDANCE]" << endl;
@@ -947,7 +967,7 @@ void executeSlippingControlCB( const slipping_control_common::SlippingControlGoa
             break;
         }
 
-        case slipping_control_common::SlippingControlGoal::MODE_OBJECT_PIVOTING:
+        case slipping_control_msgs::SlippingControlGoal::MODE_OBJECT_PIVOTING:
         {
 
             cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_OBJECT_PIVOTING]" << endl;
@@ -1063,7 +1083,7 @@ void read_grasp_force_cb(const sun_ros_msgs::Float64Stamped::ConstPtr& forceMsg)
 
 double f0_m_, tau0_m_;
 bool b_force0_arrived_ = false;
-void read_force0_cb(const slipping_control_common::ContactForcesStamped::ConstPtr& forceMsg)
+void read_force0_cb(const slipping_control_msgs::ContactForcesStamped::ConstPtr& forceMsg)
 {
     f0_m_ = fabs(forceMsg->forces.fn);
     tau0_m_ = forceMsg->forces.taun;
@@ -1072,7 +1092,7 @@ void read_force0_cb(const slipping_control_common::ContactForcesStamped::ConstPt
 
 double f1_m_, tau1_m_;
 bool b_force1_arrived_ = false;
-void read_force1_cb(const slipping_control_common::ContactForcesStamped::ConstPtr& forceMsg)
+void read_force1_cb(const slipping_control_msgs::ContactForcesStamped::ConstPtr& forceMsg)
 {
     f1_m_ = fabs(forceMsg->forces.fn);
     tau1_m_ = forceMsg->forces.taun;
@@ -1081,7 +1101,7 @@ void read_force1_cb(const slipping_control_common::ContactForcesStamped::ConstPt
 
 double fn_ls_;
 double fn_ls_free_pivot_;
-void LSCombined_CB(const slipping_control_common::LSCombinedStamped::ConstPtr& msg)
+void LSCombined_CB(const slipping_control_msgs::LSCombinedStamped::ConstPtr& msg)
 {
 
     fn_ls_ = msg->fn_ls; //To use it in Dyn Fn CB
@@ -1196,7 +1216,7 @@ inline double getTau()
     return fabs(tau0_m_ - tau1_m_);
 }
 
-bool objectPivoting( const slipping_control_common::SlippingControlGoalConstPtr &goal, string& resp_str )
+bool objectPivoting( const slipping_control_msgs::SlippingControlGoalConstPtr &goal, string& resp_str )
 {
     //cout << HEADER_PRINT_STATE BOLDYELLOW "objectPivoting() is void" CRESET << endl;
     //remember to change state if something goes wrong
@@ -1546,6 +1566,9 @@ int main(int argc, char *argv[])
     string as_slipping_control_str;
     nh_private.param("as_slipping_control" , as_slipping_control_str, string("action_slipping_control") );
 
+    string get_state_service_str;
+    nh_private.param("get_state_service" , get_state_service_str, string("slipping_control/get_state") );
+
     /*AS*/
 
     Slipping_Control_AS server(
@@ -1568,7 +1591,8 @@ int main(int argc, char *argv[])
         as_home_gripper_str,
         as_compute_bias_str,
         as_grasp_str,
-        as_slipping_control_str
+        as_slipping_control_str,
+        get_state_service_str
     );
     
     server.start();

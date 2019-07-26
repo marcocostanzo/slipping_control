@@ -21,8 +21,8 @@
 
 #include "ros/ros.h"
 
-#include "slipping_control_common/LSStamped.h"
-#include "slipping_control_common/LSCombinedStamped.h"
+#include "slipping_control_msgs/LSStamped.h"
+#include "slipping_control_msgs/LSCombinedStamped.h"
 
 
 
@@ -36,9 +36,9 @@ using namespace std;
 double fn_ls_gain, min_fn;
 
 //Messages
-slipping_control_common::LSStamped in_msg0;
-slipping_control_common::LSStamped in_msg1;
-slipping_control_common::LSCombinedStamped out_msg;
+slipping_control_msgs::LSStamped in_msg0;
+slipping_control_msgs::LSStamped in_msg1;
+slipping_control_msgs::LSCombinedStamped out_msg;
 
 //Input topic
 string in_topic0("");
@@ -53,14 +53,14 @@ ros::Subscriber sub_static1;
 void combineStatic();
 /**********************/
 
-void static_force_Callback0 (const slipping_control_common::LSStamped msg) {
+void static_force_Callback0 (const slipping_control_msgs::LSStamped msg) {
 
     in_msg0 = msg;
     combineStatic();
     pub_static.publish(out_msg);
 
 }
-void static_force_Callback1 (const slipping_control_common::LSStamped msg) {
+void static_force_Callback1 (const slipping_control_msgs::LSStamped msg) {
 
     in_msg1 = msg;
     combineStatic();
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]){
 
     /******************/
 
-    pub_static = nh_public.advertise<slipping_control_common::LSCombinedStamped>(out_topic, 1);
+    pub_static = nh_public.advertise<slipping_control_msgs::LSCombinedStamped>(out_topic, 1);
 
     sub_static0 = nh_public.subscribe(in_topic0, 1, static_force_Callback0);
     sub_static1 = nh_public.subscribe(in_topic1, 1, static_force_Callback1);

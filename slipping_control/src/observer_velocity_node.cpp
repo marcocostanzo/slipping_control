@@ -26,7 +26,7 @@
 #include "std_srvs/SetBool.h"
 
 #include <Helper.h>
-#include "slipping_control_common/LSCombinedStamped.h"
+#include "slipping_control_msgs/LSCombinedStamped.h"
 #include "sun_ros_msgs/MultiVectorStamped.h"
 
 #include "slipping_control_common/functions.h"
@@ -66,7 +66,7 @@ void setInitialConditions();
 
 /*ROS CALLBACK*/
 
-void sub_ls_combined(const slipping_control_common::LSCombinedStamped::ConstPtr& msg)
+void sub_ls_combined(const slipping_control_msgs::LSCombinedStamped::ConstPtr& msg)
 {
 
     ss_info.cor = msg->cor;

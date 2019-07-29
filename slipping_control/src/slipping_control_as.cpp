@@ -193,7 +193,7 @@ ros::ServiceClient service_client_observer_set_running_, service_client_dyn_cont
 /*
     Params
 */
-double gain_go_to_zero_deg_ = 1.0; //Use ros-param here...
+double gain_go_to_zero_deg_; //Use ros-param here...
 
 public:
 
@@ -205,6 +205,7 @@ Slipping_Control_AS(
     double hz,
     double CONTACT_FORCE_THR,
     double BEFORE_CONTACT_FORCE,
+    double gain_go_to_zero_deg,
     const std::string& topic_ls_combined,
     const std::string& topic_dyn_fn,
     const std::string& topic_desired_grasp_force,
@@ -227,6 +228,7 @@ Slipping_Control_AS(
     hz_(hz),
     CONTACT_FORCE_THR_(CONTACT_FORCE_THR),
     BEFORE_CONTACT_FORCE_(BEFORE_CONTACT_FORCE),
+    gain_go_to_zero_deg_(gain_go_to_zero_deg),
     topic_grasp_force_str_(topic_grasp_force),
     topic_force0_str_(topic_force0),
     topic_force1_str_(topic_force1),
@@ -1192,7 +1194,7 @@ bool goToZeroDeg()
     ros::Rate loop_rate(hz_);
 
     cout << HEADER_PRINT_STATE " goToZeroDeg() - Decreasing grasp force... " << endl;
-    while( fr > fn_ls_free_pivot_ )
+    while( fr > (fn_ls_free_pivot_ + 0.2) )
     {
         if (!ros::ok()) {
             cout << HEADER_PRINT_STATE BOLDRED " Ros not ok() in goToZeroDeg()" CRESET << endl;
@@ -1529,6 +1531,8 @@ int main(int argc, char *argv[])
     nh_private.param("contact_force_thr" , CONTACT_FORCE_THR, 0.8 );
     double BEFORE_CONTACT_FORCE;
     nh_private.param("before_contact_force" , BEFORE_CONTACT_FORCE, 1.7 );
+    double gain_go_to_zero_deg;
+    nh_private.param("gain_go_to_zero_deg" , gain_go_to_zero_deg, 1.0 );
 
     string topic_ls_combined_str;
     nh_private.param("topic_ls_combined" , topic_ls_combined_str, string("ls_combined") );
@@ -1576,6 +1580,7 @@ int main(int argc, char *argv[])
         hz,
         CONTACT_FORCE_THR,
         BEFORE_CONTACT_FORCE,
+        gain_go_to_zero_deg,
         topic_ls_combined_str,
         topic_dyn_fn_str,
         topic_desired_grasp_force_str,

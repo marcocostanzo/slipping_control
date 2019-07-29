@@ -11,7 +11,7 @@ class Gripper(object):
         self.home_action = SimpleActionClient('/wsg50/home_gripper_action', HomeGripperAction)
         self.slipping_control_action = SimpleActionClient('/wsg50/slipping_control_action', SlippingControlAction)
         self.grasp_action = SimpleActionClient('/wsg50/grasp_action', GraspAction)
-        self.get_state_service = rospy.ServiceProxy('add_two_ints', GetState)
+        self.get_state_service = rospy.ServiceProxy('/wsg50/slipping_control/get_state', GetState)
 
     def home(self):
         if self.active:

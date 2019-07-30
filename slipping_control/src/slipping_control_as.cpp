@@ -38,6 +38,9 @@
 
 #include <slipping_control_msgs/GetState.h>
 
+#include <boost/thread/thread.hpp>
+#include "slipping_control_msgs/StateStamped.h"
+
 #ifndef SUN_COLORS
 #define SUN_COLORS
 
@@ -282,6 +285,14 @@ void start()
     grasp_as_.start();
     slipping_control_as_.start();
     cout << HEADER_PRINT GREEN "Actions Started!" CRESET << endl;
+}
+
+/*
+    Get the state
+*/
+int getState()
+{
+    return state_;
 }
 
 protected:
@@ -1515,6 +1526,28 @@ void publish_force_ref( double force )
     MAIN
 ************************************/
 
+void publish_state(double hz, ros::NodeHandle& nh_public, Slipping_Control_AS* server)
+{
+
+    ros::Publisher pubState = nh_public.advertise<slipping_control_msgs::StateStamped>("/slipping_control/state", 1);
+    
+    slipping_control_msgs::StateStamped state_msg;
+
+    state_msg.header.frame_id = "slipping_state";
+
+    ros::Rate loop_rate(hz);
+    while(ros::ok())
+    {
+        state_msg.header.stamp = ros::Time::now();
+        state_msg.state = server->getState();
+
+        pubState.publish(state_msg);
+
+        loop_rate.sleep();
+    }
+
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -1599,6 +1632,8 @@ int main(int argc, char *argv[])
         as_slipping_control_str,
         get_state_service_str
     );
+
+    boost::thread thread_b(publish_state, hz, nh_public, &server);
     
     server.start();
 

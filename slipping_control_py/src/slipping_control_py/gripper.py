@@ -32,7 +32,7 @@ class Gripper(object):
     def slipping_avoidance(self):
         if self.active:
             goal = SlippingControlGoal()
-            goal.mode = SlippingControlGoal.MODE_DYN_SLIPPING_AVOIDANCE
+            goal.mode = SlippingControlGoal.MODE_SLIPPING_AVOIDANCE
             self.slipping_control_action.send_goal_and_wait(goal)
 
     def get_state(self):

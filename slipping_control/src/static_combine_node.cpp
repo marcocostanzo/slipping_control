@@ -101,8 +101,19 @@ int main(int argc, char *argv[]){
 void combineStatic(){
     
     if(in_msg0.header.stamp > in_msg1.header.stamp)
-        out_msg.header.stamp = in_msg0.header.stamp;
+    {
+        if(in_msg0.header.stamp > out_msg.header.stamp)
+            out_msg.header.stamp = in_msg0.header.stamp;
+        else
+            out_msg.header.stamp += ros::Duration(1.0E-6); //this is to avoid msgs with same timestamp
+    }
     else
+    {
+        if(in_msg1.header.stamp > out_msg.header.stamp)
+            out_msg.header.stamp = in_msg1.header.stamp;
+        else
+            out_msg.header.stamp += ros::Duration(1.0E-6); //this is to avoid msgs with same timestamp
+    }
         out_msg.header.stamp = in_msg1.header.stamp;
 
     out_msg.header.frame_id = "combined_ls";

@@ -258,6 +258,8 @@
 		<param name="as_grasp" value="$(arg grasp_action)"/>
 		<param name="as_slipping_control" value="$(arg slipping_control_action)"/>
 
+		<param name="gain_go_to_zero_deg" value="2.0"/>
+
 	</node>
 <!--///-->
 <!--///-->

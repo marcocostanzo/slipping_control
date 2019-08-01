@@ -20,7 +20,7 @@
     <arg name="finger_distance_offset" default="0.0"/>
 
     <!-- Params Low level force control -->
-    <arg name="force_control_gain" default="13.0" />
+    <arg name="force_control_gain" default="10.0" />
     <!-- <arg name="force_control_max_force" default="18.5" /> Wireless -->
     <arg name="force_control_max_force" default="10.0" />
     <arg name="force_control_filter" default="false" />
@@ -237,8 +237,8 @@
         <arg name="mu" value="0.75"/>
         <arg name="k" value="4.0"/> -->
         <arg name="delta" value="0.0055"/>
-        <arg name="gamma" value="0.33333"/>
-        <arg name="mu" value="0.7"/>
+        <arg name="gamma" value="0.3"/>
+        <arg name="mu" value="0.72"/>
         <arg name="k" value="4.0"/>
         <!--
         <arg name="delta_0" value="$(arg delta)"/>

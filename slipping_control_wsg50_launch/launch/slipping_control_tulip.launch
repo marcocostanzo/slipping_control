@@ -20,7 +20,7 @@
     <arg name="finger_distance_offset" default="0.0"/>
 
     <!-- Params Low level force control -->
-    <arg name="force_control_gain" default="10.0" />
+    <!--<arg name="force_control_gain" default="10.0" />--> <arg name="force_control_gain" default="7.0" />
     <!-- <arg name="force_control_max_force" default="18.5" /> Wireless -->
     <arg name="force_control_max_force" default="10.0" />
     <arg name="force_control_filter" default="false" />
@@ -31,7 +31,7 @@
     <arg name="stiff_1" default="4.7819095549E+03" />
     <arg name="stiff_2" default="2.7097681320E+06" /> -->
     <arg name="stiff_1" default="5.7852347288E+03" />
-    <arg name="stiff_2" default="3.1711677733E+06" />
+    <!--<arg name="stiff_2" default="3.1711677733E+06" />--> <arg name="stiff_2" default="4.1711677733E+06" />
     <arg name="stiff_use_linear_model" default="false" />
 
     <!-- Measure Filtering -->
@@ -269,7 +269,7 @@
 
         <!-- PARAMS Static Controller -->
 	    <arg name="fn_ls_gain" value="1.1"/>
-        <arg name="min_fn" value="1.0"/>	
+        <arg name="min_fn" value="0.1"/>	
 
         <!-- PARAMS Dyn Controller -->
         <arg name="dyn_frequency" value="1000.0"/>

@@ -2,7 +2,7 @@ import rospy
 from actionlib import SimpleActionClient
 from slipping_control_msgs.msg import HomeGripperAction, SlippingControlAction, GraspAction, HomeGripperGoal, \
     GraspGoal, SlippingControlGoal
-from slipping_control_msgs.srv import GetState
+from slipping_control_msgs.srv import GetState, ChLSParams, ChLSParamsRequest
 
 
 class Gripper(object):
@@ -12,6 +12,8 @@ class Gripper(object):
         self.slipping_control_action = SimpleActionClient('/wsg50/slipping_control_action', SlippingControlAction)
         self.grasp_action = SimpleActionClient('/wsg50/grasp_action', GraspAction)
         self.get_state_service = rospy.ServiceProxy('/wsg50/slipping_control/get_state', GetState)
+        self.ch_params0_service = rospy.ServiceProxy('/wsg50/ls_0/change_params', ChLSParams)
+        self.ch_params1_service = rospy.ServiceProxy('/wsg50/ls_1/change_params', ChLSParams)
 
     def home(self):
         if self.active:
@@ -59,3 +61,14 @@ class Gripper(object):
         if state == 4 or state == 5 or state == 6 or state == 7 or state == 8 or state == 9 or state == 10:
             return True
         return False
+
+    def change_params(self, mu):
+        ch_msg = ChLSParamsRequest()
+        ch_msg.delta = -1
+        ch_msg.gamma = -1
+        ch_msg.mu = mu
+        ch_msg.k = -1
+        self.ch_params0_service(ch_msg)
+        self.ch_params1_service(ch_msg)
+
+

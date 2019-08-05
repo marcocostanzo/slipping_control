@@ -238,7 +238,7 @@
         <arg name="k" value="4.0"/> -->
         <arg name="delta" value="0.0055"/>
         <arg name="gamma" value="0.3"/>
-        <arg name="mu" value="0.9"/>
+        <arg name="mu" value="0.82"/>
         <arg name="k" value="4.0"/>
         <!--
         <arg name="delta_0" value="$(arg delta)"/>

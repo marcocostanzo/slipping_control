@@ -114,7 +114,6 @@ void combineStatic(){
         else
             out_msg.header.stamp += ros::Duration(1.0E-6); //this is to avoid msgs with same timestamp
     }
-        out_msg.header.stamp = in_msg1.header.stamp;
 
     out_msg.header.frame_id = "combined_ls";
 

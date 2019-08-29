@@ -428,3 +428,47 @@ Matrix<> vel_sys_FF_fcn_cont(const Vector<>& x, const Vector<>& u, const VEL_SYS
     return F;
 
 }
+
+//* VEL 1DOF *//
+
+Vector<> vel_sys_1dof_h_fcn(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
+    Vector<1> ret = makeVector( info.sigma_02*x[1] + info.beta_o2*x[0] );
+    return ret;
+}
+
+Matrix<> vel_sys_1dof_HH_fcn(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
+    Matrix<1,2> ret = Data( info.beta_o2 , info.sigma_02 );
+    return ret;
+}
+
+Vector<> vel_sys_1dof_f_fcn_cont(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
+    
+    Vector<2> x_dot = Zeros;
+
+    double den = 1.0/( info.Io + info.Mo*pow(info.cor+info.b,2) );
+
+    x_dot[0] = den * ( -info.beta_o2*x[0] - info.sigma_02*x[1] + u[0] );
+
+    x_dot[1] = x[0] - info.sigma_02/info.f_max_0 * fabs(x[0]) * x[1];
+
+    return x_dot;
+
+}
+
+Matrix<> vel_sys_1dof_FF_fcn_cont(const Vector<>& x, const Vector<>& u, const VEL_SYSTEM_INFO& info){
+    
+    Matrix<2,2> F = Zeros;
+
+    double den = 1.0/( info.Io + info.Mo*pow(info.cor+info.b,2) );
+
+    F(0,0) = -den * ( info.beta_o2 );
+
+    F(0,1) = -info.sigma_02*den;
+
+    F(1,0) = 1.0 - info.sigma_02/info.f_max_0 * x[1] * sign( x[0] );
+
+    F(1,1) = -info.sigma_02/info.f_max_0 * fabs( x[0] );
+
+    return F;
+
+}

@@ -278,3 +278,12 @@ target_link_libraries(observer_velocity
   ${catkin_LIBRARIES}
 )
 #########################################
+#########################################
+add_executable(one_dof_observer_velocity
+  src/1dof_observer_velocity_node.cpp
+)
+add_dependencies(one_dof_observer_velocity ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(one_dof_observer_velocity
+  ${catkin_LIBRARIES}
+)
+#########################################

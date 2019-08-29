@@ -1,0 +1,263 @@
+<launch>
+
+	<!-- Subs -->
+	<arg name="contact_force_0_topic" default="finger0/contact_force"/>
+	<arg name="contact_force_1_topic" default="finger1/contact_force"/>
+	<arg name="grasp_force_topic" default="grasp_force"/>
+
+	<!-- Pubs -->
+	<arg name="desired_grasp_force_topic" default="desired_grasp_force"/>
+	<arg name="ls_0_topic" default="ls_0"/>
+	<arg name="ls_1_topic" default="ls_1"/>
+	<arg name="ls_combined_topic" default="ls_combined"/>
+	<arg name="obs_extimated_velocity_topic" default="extimated_velocity"/>
+	<arg name="obs_extimated_state_topic" default="extimated_state"/>
+	<arg name="obs_extimated_measure_topic" default="extimated_measure"/>
+	<arg name="dynamic_force_topic" default="dynamic_force"/>
+
+	<!-- Srv Client -->
+	<arg name="home_gripper_service" default="home_gripper_service"/>
+	<arg name="force_control_set_running_service" default="force_control/set_running"/>
+
+	<!-- Srv Server -->
+	<arg name="ls_0_change_params_service" default="ls_0/change_params"/>
+	<arg name="ls_1_change_params_service" default="ls_1/change_params"/>
+	<arg name="obs_set_running_service" default="obs/set_running"/>
+	<arg name="dyn_set_running_service" default="dyn_controller/set_running"/>	
+
+	<!-- Action Client -->
+	<arg name="compute_bias_0_action" default="finger0/compute_bias"/>
+	<arg name="compute_bias_1_action" default="finger1/compute_bias"/>	
+
+	<!-- Action Server -->
+	<arg name="home_gripper_action" default="home_gripper_action"/>
+	<arg name="compute_bias_action" default="compute_bias_action"/>
+	<arg name="grasp_action" default="grasp_action"/>
+	<arg name="slipping_control_action" default="slipping_control_action"/>
+
+	<!-- PARAMS COMPUTE_LS -->
+	<arg name="delta" default="0.004353"/>
+	<arg name="gamma" default="0.2569"/>
+	<arg name="mu" default="0.8"/>
+	<arg name="k" default="4.0"/>
+
+	<arg name="delta_0" default="$(arg delta)"/>
+	<arg name="gamma_0" default="$(arg gamma)"/>
+	<arg name="mu_0" default="$(arg mu)"/>
+	<arg name="k_0" default="$(arg k)"/>
+
+	<arg name="delta_1" default="$(arg delta)"/>
+	<arg name="gamma_1" default="$(arg gamma)"/>
+	<arg name="mu_1" default="$(arg mu)"/>
+	<arg name="k_1" default="$(arg k)"/>
+
+	<arg name="max_cor_tilde" default="100.0"/>
+
+	<!-- PARAMS Observer -->
+	<arg name="obs_frequency" default="2000.0"/>
+	<arg name="Io" default="7.4013e-04"/>
+	<arg name="Mo" default="0.350"/>
+	<arg name="b" default="0.0"/>
+	<arg name="beta_o" default="0.02"/>
+	<arg name="sigma_0" default="50.0"/>
+	<arg name="l" default="1000.0"/>
+
+	<arg name="obs_min_gen_max_force" default="0.001"/>	
+
+	<!-- PARAMS Static Controller -->
+	<arg name="fn_ls_gain" default="1.1"/>
+	<arg name="min_fn" default="1.0"/>
+
+	<!-- PARAMS Dyn Controller -->
+	<arg name="dyn_frequency" default="2000.0"/>
+	<arg name="dyn_i_gain" default="50.0"/>
+	<arg name="dyn_p_gain" default="13.0"/>
+	<arg name="dyn_integrator_dc_gain" default="35.0"/>
+	<arg name="max_fnd" default="10.0"/>
+
+	<!-- PARAMS Slipping Control Action Server -->
+	<arg name="as_rate" default="500.0"/>
+	<arg name="contact_force_thr" default="0.8"/>
+	<arg name="before_contact_force" default="1.7"/>
+
+<!--///-->
+<!--FIX SIGN-->
+
+	<node name="contact_force_fix" pkg="slipping_control" type="contact_force_fix" output="screen">
+
+        <!-- Sub -->
+        <param name="input_topic0" value="$(arg contact_force_0_topic)"/>
+        <param name="input_topic1" value="$(arg contact_force_1_topic)"/>
+
+        <!-- Pubs -->
+        <param name="output_topic0" value="$(arg contact_force_0_topic)/fix"/>
+		<param name="output_topic1" value="$(arg contact_force_1_topic)/fix"/>
+
+    </node>
+
+<!--///-->
+<!--LS0-->
+
+	<node name="compute_ls_0" pkg="slipping_control" type="compute_ls" output="screen">
+
+		<!-- PARAMS -->
+        <param name="delta" value="$(arg delta_0)"/>
+        <param name="gamma" value="$(arg gamma_0)"/>
+        <param name="mu" value="$(arg mu_0)"/>
+		<param name="k" value="$(arg k_0)"/>
+
+		<!-- Misc Vars -->
+		<param name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
+
+		<!-- Sub -->
+		<param name="contact_force_topic" value="$(arg contact_force_0_topic)/fix"/>
+
+		 <!-- Pub -->
+		 <param name="ls_topic" value="$(arg ls_0_topic)"/>
+
+		 <!-- Srv Server -->
+		 <param name="service_ch_params" value="$(arg ls_0_change_params_service)"/>
+
+	</node>
+
+<!--///-->
+<!--LS1-->
+
+	<node name="compute_ls_1" pkg="slipping_control" type="compute_ls" output="screen">
+
+		<!-- PARAMS -->
+        <param name="delta" value="$(arg delta_1)"/>
+        <param name="gamma" value="$(arg gamma_1)"/>
+        <param name="mu" value="$(arg mu_1)"/>
+		<param name="k" value="$(arg k_1)"/>
+
+		<!-- Misc Vars -->
+		<param name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
+
+		<!-- Sub -->
+		<param name="contact_force_topic" value="$(arg contact_force_1_topic)/fix"/>
+
+		 <!-- Pub -->
+		 <param name="ls_topic" value="$(arg ls_1_topic)"/>
+
+		 <!-- Srv Server -->
+		 <param name="service_ch_params" value="$(arg ls_1_change_params_service)"/>
+
+	</node>
+
+<!--///-->
+<!--Combine Ls-->
+
+	<node name="static_combine" pkg="slipping_control" type="static_combine" output="screen">
+
+		<!-- PARAMS -->
+        <param name="fn_ls_gain" value="$(arg fn_ls_gain)"/>
+		<param name="min_fn" value="$(arg min_fn)"/>
+
+		<!-- Subs -->
+        <param name="in_topic0" value="$(arg ls_0_topic)"/>
+        <param name="in_topic1" value="$(arg ls_1_topic)"/>
+
+		<!-- Pub -->
+        <param name="out_topic" value="$(arg ls_combined_topic)"/>
+
+    </node>
+
+<!--///-->
+<!--Observer-->
+
+	<node name="one_dof_observer_velocity" pkg="slipping_control" type="one_dof_observer_velocity" output="screen">
+
+		<!--Params-->
+		<param name="hz" type="double" value="$(arg obs_frequency)"/>
+		<param name="Io" type="double" value="$(arg Io)"/>
+		<param name="Mo" type="double" value="$(arg Mo)"/>
+		<param name="b" type="double" value="$(arg b)"/>
+		<param name="beta_o" type="double" value="$(arg beta_o)"/>
+		<param name="sigma_0" type="double" value="$(arg sigma_0)"/>
+
+		<param name="l" type="double" value="1000.0"/>
+
+		<!-- Misc Vars -->
+		<param name="min_gen_max_force" type="double" value="$(arg obs_min_gen_max_force)"/>
+
+		<!-- Sub -->
+		<param name="ls_combined_topic" value="$(arg ls_combined_topic)"/>
+
+		<!-- Pubs -->
+		<param name="extimated_velocity_topic" value="$(arg obs_extimated_velocity_topic)"/>
+		<param name="extimated_state_topic" value="$(arg obs_extimated_state_topic)"/>
+		<param name="extimated_measure_topic" value="$(arg obs_extimated_measure_topic)"/>
+
+		<!-- Srv Server -->
+		<param name="set_running_service" value="$(arg obs_set_running_service)"/>
+
+	</node>
+
+<!--///-->
+<!--Dyn Controller-->
+
+	<node name="dynamic_controller" pkg="slipping_control" type="dynamic_controller" output="screen">
+
+		<!--Params-->
+		<param name="hz" value="$(arg dyn_frequency)"/>
+		<param name="i_gain" value="$(arg dyn_i_gain)"/>
+		<param name="p_gain" value="$(arg dyn_p_gain)"/>
+		<param name="integrator_dc_gain" value="$(arg dyn_integrator_dc_gain)"/>
+
+		<param name="max_fnd" value="$(arg max_fnd)"/>
+
+		<!-- Sub -->
+		<param name="in_topic" value="$(arg obs_extimated_velocity_topic)"/>
+
+		<!-- Pub -->
+		<param name="out_topic" value="$(arg dynamic_force_topic)"/>
+
+		<!-- Srv Server -->
+		<param name="set_running_service" value="$(arg dyn_set_running_service)"/>
+
+	</node>
+
+<!--///-->
+<!--Slipping Control AS-->
+
+	<node name="slipping_control_as" pkg="slipping_control" type="slipping_control_as" output="screen">
+
+		<!--Params-->
+		<param name="rate" value="$(arg as_rate)"/>
+		<param name="contact_force_thr" value="$(arg contact_force_thr)"/>
+		<param name="before_contact_force" value="$(arg before_contact_force)"/>
+
+		<!-- Subs -->
+		<param name="topic_grasp_force" value="$(arg grasp_force_topic)"/>
+		<param name="topic_ls_combined" value="$(arg ls_combined_topic)"/>
+		<param name="topic_dyn_force" value="$(arg dynamic_force_topic)"/>
+		<param name="topic_force0" value="$(arg contact_force_0_topic)"/>
+		<param name="topic_force1" value="$(arg contact_force_1_topic)"/>
+
+		<!-- Pub -->
+		<param name="topic_desired_grasp_force" value="$(arg desired_grasp_force_topic)"/>
+
+		<!-- Srv Client -->
+		<param name="sc_home_gripper" value="$(arg home_gripper_service)"/>
+		<param name="sc_force_control_set_running" value="$(arg force_control_set_running_service)"/>
+		<param name="sc_observer_set_running" value="$(arg obs_set_running_service)"/>
+		<param name="sc_dyn_controller_set_running" value="$(arg dyn_set_running_service)"/>
+
+		<!-- Action Client -->
+		<param name="ac_compute_bias_0" value="$(arg compute_bias_0_action)"/>
+		<param name="ac_compute_bias_1" value="$(arg compute_bias_1_action)"/>
+
+		<!-- Action Server -->
+		<param name="as_home_gripper" value="$(arg home_gripper_action)"/>
+		<param name="as_compute_bias" value="$(arg compute_bias_action)"/>
+		<param name="as_grasp" value="$(arg grasp_action)"/>
+		<param name="as_slipping_control" value="$(arg slipping_control_action)"/>
+
+		<param name="gain_go_to_zero_deg" value="2.0"/>
+
+	</node>
+<!--///-->
+<!--///-->
+
+</launch>

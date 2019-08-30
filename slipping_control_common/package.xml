@@ -50,6 +50,7 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <depend>roslib</depend>
+  <depend>slipping_control_msgs</depend>
 
   <depend>sun_learning_lib</depend>
 

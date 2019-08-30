@@ -10,6 +10,7 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
 sun_learning_lib
 roslib
+slipping_control_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -113,6 +114,7 @@ include_directories(
 ## Declare a C++ library
  add_library(${PROJECT_NAME}
    src/${PROJECT_NAME}/functions.cpp
+   src/${PROJECT_NAME}/Slipping_Control_Client.cpp
  )
 
 ## Add cmake target dependencies of the library

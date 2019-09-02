@@ -97,6 +97,7 @@ catkin_package(
   CATKIN_DEPENDS    
   roslib 
   sun_learning_lib 
+  slipping_control_msgs
 #  DEPENDS system_lib
 )
 

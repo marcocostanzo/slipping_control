@@ -23,8 +23,9 @@
 
 using namespace std;
 
-Slipping_Control_Client::Slipping_Control_Client( ros::NodeHandle& nh, bool active )
+Slipping_Control_Client::Slipping_Control_Client( ros::NodeHandle& nh, bool gripper_active )
 :
+active(gripper_active),
 ac_home_("/wsg50/home_gripper_action", true),
 ac_grasp_("/wsg50/grasp_action", true),
 ac_sc_("/wsg50/slipping_control_action", true)

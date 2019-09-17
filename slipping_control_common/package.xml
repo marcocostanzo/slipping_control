@@ -53,6 +53,7 @@
   <depend>slipping_control_msgs</depend>
 
   <depend>sun_learning_lib</depend>
+  <depend>actionlib</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

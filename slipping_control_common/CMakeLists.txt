@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 sun_learning_lib
 roslib
 slipping_control_msgs
+actionlib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -98,6 +99,7 @@ catkin_package(
   roslib 
   sun_learning_lib 
   slipping_control_msgs
+  actionlib
 #  DEPENDS system_lib
 )
 

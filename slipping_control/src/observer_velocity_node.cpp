@@ -134,12 +134,12 @@ int main(int argc, char *argv[]){
     string ls_combined_tipic_str("");
     nh_private.param( "ls_combined_tipic" , ls_combined_tipic_str, string("ls_combined") );
 
-    string extimated_velocity_topic_str("");
-    nh_private.param( "extimated_velocity_topic" , extimated_velocity_topic_str, string("extimated_vel") );
-    string extimated_state_topic_str("");
-    nh_private.param( "extimated_state_topic" , extimated_state_topic_str, string("extimated_state") );
-    string extimated_measure_topic_str("");
-    nh_private.param( "extimated_measure_topic" , extimated_measure_topic_str, string("extimated_measure") );
+    string estimated_velocity_topic_str("");
+    nh_private.param( "estimated_velocity_topic" , estimated_velocity_topic_str, string("estimated_vel") );
+    string estimated_state_topic_str("");
+    nh_private.param( "estimated_state_topic" , estimated_state_topic_str, string("estimated_state") );
+    string estimated_measure_topic_str("");
+    nh_private.param( "estimated_measure_topic" , estimated_measure_topic_str, string("estimated_measure") );
 
     string set_running_service_str("");
     nh_private.param("set_running_service" , set_running_service_str, string("set_running") );
@@ -214,9 +214,9 @@ int main(int argc, char *argv[]){
     ros::Subscriber subLSCombined = nh_public.subscribe(ls_combined_tipic_str, 1, sub_ls_combined);
     
     //Pubs
-    ros::Publisher pubExtVel = nh_public.advertise<sun_ros_msgs::Float64Stamped>(extimated_velocity_topic_str, 1);
-    ros::Publisher pubExtState = nh_public.advertise<sun_ros_msgs::MultiVectorStamped>(extimated_state_topic_str, 1);
-    ros::Publisher pubExtMeasure = nh_public.advertise<sun_ros_msgs::MultiVectorStamped>(extimated_measure_topic_str, 1);
+    ros::Publisher pubExtVel = nh_public.advertise<sun_ros_msgs::Float64Stamped>(estimated_velocity_topic_str, 1);
+    ros::Publisher pubExtState = nh_public.advertise<sun_ros_msgs::MultiVectorStamped>(estimated_state_topic_str, 1);
+    ros::Publisher pubExtMeasure = nh_public.advertise<sun_ros_msgs::MultiVectorStamped>(estimated_measure_topic_str, 1);
 
     //Init Pub Mex
     sun_ros_msgs::Float64Stamped ext_vel_msg;

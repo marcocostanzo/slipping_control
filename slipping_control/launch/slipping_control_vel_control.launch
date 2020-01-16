@@ -54,15 +54,13 @@
 	<arg name="max_cor_tilde" default="100.0"/>
 
 	<!-- PARAMS Observer -->
-	<arg name="use_kalman_filter" default="true"/>
 	<arg name="obs_frequency" default="2000.0"/>
 	<arg name="Io" default="7.4013e-04"/>
 	<arg name="Mo" default="0.350"/>
 	<arg name="b" default="0.0"/>
-	<arg name="beta_o2" default="0.02"/>
-	<arg name="beta_o3" default="$(arg beta_o2)"/>
-	<arg name="sigma_02" default="50.0"/>
-	<arg name="sigma_03" default="$(arg sigma_02)"/>
+	<arg name="beta_o" default="0.02"/>
+	<arg name="sigma_0" default="50.0"/>
+	<arg name="l" default="1000.0"/>
 
 	<arg name="obs_min_gen_max_force" default="0.001"/>	
 
@@ -71,11 +69,8 @@
 	<arg name="min_fn" default="1.0"/>
 
 	<!-- PARAMS Dyn Controller -->
-	<arg name="dyn_frequency" default="2000.0"/>
-	<arg name="dyn_i_gain" default="50.0"/>
-	<arg name="dyn_p_gain" default="13.0"/>
-	<arg name="dyn_integrator_dc_gain" default="35.0"/>
-	<arg name="max_fnd" default="10.0"/>
+	<arg name="dyn_k_w" default="10.0"/>
+	<arg name="dyn_wd_topic" default="/wd"/>
 
 	<!-- PARAMS Slipping Control Action Server -->
 	<arg name="as_rate" default="500.0"/>
@@ -168,25 +163,23 @@
 <!--///-->
 <!--Observer-->
 
-	<node name="observer_velocity" pkg="slipping_control" type="observer_velocity" output="screen">
+	<node name="one_dof_observer_velocity" pkg="slipping_control" type="one_dof_observer_velocity" output="screen">
 
 		<!--Params-->
 		<param name="hz" type="double" value="$(arg obs_frequency)"/>
 		<param name="Io" type="double" value="$(arg Io)"/>
 		<param name="Mo" type="double" value="$(arg Mo)"/>
 		<param name="b" type="double" value="$(arg b)"/>
-		<param name="beta_o2" type="double" value="$(arg beta_o2)"/>
-		<param name="beta_o3" type="double" value="$(arg beta_o3)"/>
-		<param name="sigma_02" type="double" value="$(arg sigma_02)"/>
-		<param name="sigma_03" type="double" value="$(arg sigma_03)"/>
+		<param name="beta_o" type="double" value="$(arg beta_o)"/>
+		<param name="sigma_0" type="double" value="$(arg sigma_0)"/>
 
-		<param name="use_kalman_filter" value="$(arg use_kalman_filter)"/>
+		<param name="l" type="double" value="1000.0"/>
 
 		<!-- Misc Vars -->
 		<param name="min_gen_max_force" type="double" value="$(arg obs_min_gen_max_force)"/>
 
 		<!-- Sub -->
-		<param name="ls_combined_tipic" value="$(arg ls_combined_topic)"/>
+		<param name="ls_combined_topic" value="$(arg ls_combined_topic)"/>
 
 		<!-- Pubs -->
 		<param name="estimated_velocity_topic" value="$(arg obs_estimated_velocity_topic)"/>
@@ -201,18 +194,14 @@
 <!--///-->
 <!--Dyn Controller-->
 
-	<node name="dynamic_controller" pkg="slipping_control" type="dynamic_controller" output="screen">
+	<node name="velocity_controller" pkg="slipping_control" type="velocity_controller" output="screen">
 
 		<!--Params-->
-		<param name="hz" value="$(arg dyn_frequency)"/>
-		<param name="i_gain" value="$(arg dyn_i_gain)"/>
-		<param name="p_gain" value="$(arg dyn_p_gain)"/>
-		<param name="integrator_dc_gain" value="$(arg dyn_integrator_dc_gain)"/>
-
-		<param name="max_fnd" value="$(arg max_fnd)"/>
+		<param name="k_w" value="$(arg dyn_k_w)"/>
 
 		<!-- Sub -->
-		<param name="in_topic" value="$(arg obs_estimated_velocity_topic)"/>
+		<param name="w_topic" value="$(arg obs_estimated_velocity_topic)"/>
+		<param name="wd_topic" value="$(arg dyn_wd_topic)"/>
 
 		<!-- Pub -->
 		<param name="out_topic" value="$(arg dynamic_force_topic)"/>

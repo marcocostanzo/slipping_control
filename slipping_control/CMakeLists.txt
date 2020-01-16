@@ -287,3 +287,12 @@ target_link_libraries(one_dof_observer_velocity
   ${catkin_LIBRARIES}
 )
 #########################################
+#########################################
+add_executable(velocity_controller
+  src/vel_controller_node.cpp
+)
+add_dependencies(velocity_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(velocity_controller
+  ${catkin_LIBRARIES}
+)
+#########################################

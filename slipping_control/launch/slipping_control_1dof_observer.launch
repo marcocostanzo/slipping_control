@@ -10,9 +10,9 @@
 	<arg name="ls_0_topic" default="ls_0"/>
 	<arg name="ls_1_topic" default="ls_1"/>
 	<arg name="ls_combined_topic" default="ls_combined"/>
-	<arg name="obs_extimated_velocity_topic" default="extimated_velocity"/>
-	<arg name="obs_extimated_state_topic" default="extimated_state"/>
-	<arg name="obs_extimated_measure_topic" default="extimated_measure"/>
+	<arg name="obs_estimated_velocity_topic" default="estimated_velocity"/>
+	<arg name="obs_estimated_state_topic" default="estimated_state"/>
+	<arg name="obs_estimated_measure_topic" default="estimated_measure"/>
 	<arg name="dynamic_force_topic" default="dynamic_force"/>
 
 	<!-- Srv Client -->
@@ -185,9 +185,9 @@
 		<param name="ls_combined_topic" value="$(arg ls_combined_topic)"/>
 
 		<!-- Pubs -->
-		<param name="extimated_velocity_topic" value="$(arg obs_extimated_velocity_topic)"/>
-		<param name="extimated_state_topic" value="$(arg obs_extimated_state_topic)"/>
-		<param name="extimated_measure_topic" value="$(arg obs_extimated_measure_topic)"/>
+		<param name="estimated_velocity_topic" value="$(arg obs_estimated_velocity_topic)"/>
+		<param name="estimated_state_topic" value="$(arg obs_estimated_state_topic)"/>
+		<param name="estimated_measure_topic" value="$(arg obs_estimated_measure_topic)"/>
 
 		<!-- Srv Server -->
 		<param name="set_running_service" value="$(arg obs_set_running_service)"/>
@@ -208,7 +208,7 @@
 		<param name="max_fnd" value="$(arg max_fnd)"/>
 
 		<!-- Sub -->
-		<param name="in_topic" value="$(arg obs_extimated_velocity_topic)"/>
+		<param name="in_topic" value="$(arg obs_estimated_velocity_topic)"/>
 
 		<!-- Pub -->
 		<param name="out_topic" value="$(arg dynamic_force_topic)"/>

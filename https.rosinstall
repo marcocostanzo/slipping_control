@@ -1,0 +1,37 @@
+
+# For sun_helper_lib, sun_learning_lib, sun_systems_lib
+- git:
+    local-name: ros_toon
+    uri: http://github.com/marcocostanzo/ros_toon.git
+    version: TOON_3.2
+
+- git:
+    local-name: sun_helper_lib
+    uri: http://github.com/marcocostanzo/sun_helper_lib.git
+    version: master
+
+- git:
+    local-name: sun_learning_lib
+    uri: http://github.com/marcocostanzo/sun_learning_lib.git
+    version: V2
+
+- git:
+    local-name: sun_systems_lib
+    uri: http://github.com/marcocostanzo/sun_systems_lib.git
+    version: V2
+
+- git:
+    local-name: sun_ros_msgs
+    uri: http://github.com/marcocostanzo/sun_ros_msgs.git
+    version: V2
+
+### sun_tactile_sensor TO BE REMOVED 
+- git:
+    local-name: serial
+    uri: http://github.com/wjwwood/serial.git
+    version: cbcca7c83745fedd75afb7a0a27ee5c4112435c2
+
+- git:
+    local-name: sun_tactile_sensor
+    uri: http://github.com/marcocostanzo/tactile_sensor_ros.git
+    version: master

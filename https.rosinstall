@@ -25,6 +25,11 @@
     uri: http://github.com/marcocostanzo/sun_ros_msgs.git
     version: V2
 
+- git:
+    local-name: slipping_control
+    uri: https://github.com/marcocostanzo/slipping_control.git
+    version: master
+
 ### sun_tactile_sensor TO BE REMOVED 
 - git:
     local-name: serial

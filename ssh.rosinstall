@@ -23,7 +23,12 @@
 - git:
     local-name: sun_ros_msgs
     uri: git@github.com:marcocostanzo/sun_ros_msgs.git
-    version: V2
+    version: master
+
+- git:
+    local-name: slipping_control
+    uri: git@github.com:marcocostanzo/slipping_control.git
+    version: master
 
 ### sun_tactile_sensor TO BE REMOVED 
 - git:

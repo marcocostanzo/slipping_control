@@ -47,7 +47,7 @@ using namespace std;
 using namespace TooN;
 
 VEL_SYSTEM_INFO ss_info;
-Observer_Interface* observer;
+sun::Observer_Interface* observer;
 
 Vector<OBS_DIM_IN> input_vector; // u = [ generalizedforce ]
 Vector<OBS_DIM_OUT> y_kf = Zeros;
@@ -137,10 +137,10 @@ int main(int argc, char *argv[]){
     L(0,0) = l;
     cout << HEADER_PRINT << " L= " << endl << L << endl;
 
-    observer = new Observer_SS_Incapsuler( 
-                RK4(
-                    Continuous_Luenberger_Observer(
-                        Continuous_System( 
+    observer = new sun::Observer_SS_Incapsuler( 
+                sun::RK4(
+                    sun::Continuous_Luenberger_Observer(
+                        sun::Continuous_System( 
                             OBS_DIM_STATE, 
                             OBS_DIM_OUT, 
                             OBS_DIM_IN, 

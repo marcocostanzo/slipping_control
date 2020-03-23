@@ -71,7 +71,7 @@ double i_gain;
 double integrator_dc_gain;
 double p_gain;
 double input_data;
-TF_FIRST_ORDER_FILTER* tf_pseudo_integrator;
+sun::TF_FIRST_ORDER_FILTER* tf_pseudo_integrator;
 bool running = false;
 
 sun_ros_msgs::Float64Stamped fnd;
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]){
 	// Publisher
     if(i_gain!=0.0){
 	    in_sub = nh_public.subscribe(in_topic, 1, readInput);
-        tf_pseudo_integrator = new TF_FIRST_ORDER_FILTER(i_gain/integrator_dc_gain/2.0/M_PI, 1.0/Hz, integrator_dc_gain);
+        tf_pseudo_integrator = new sun::TF_FIRST_ORDER_FILTER(i_gain/integrator_dc_gain/2.0/M_PI, 1.0/Hz, integrator_dc_gain);
     }
     else
         in_sub = nh_public.subscribe(in_topic, 1, readInput_and_pub);

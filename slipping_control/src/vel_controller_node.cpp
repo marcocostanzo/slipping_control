@@ -118,7 +118,7 @@ void read_wd_and_pub(const sun_ros_msgs::Float64Stamped::ConstPtr& msg){
     
 }
 
-TF_SISO* C_tf_ptr;
+sun::TF_SISO* C_tf_ptr;
 void reset_tf()
 {
     if(b_dynamic_system)
@@ -241,7 +241,7 @@ int main(int argc, char *argv[]){
 
         //SELLA
         Ts = 1.0000000000E-02;
-        TF_SISO C_tf( 
+        sun::TF_SISO C_tf( 
             TooN::makeVector(9.7217712425E-01, -9.4955427898E-01, -9.7210546680E-01, 9.4962593643E-01     ) , //const TooN::Vector<>& num_coeff, 
             TooN::makeVector(1.0000000000E+00, -2.8743715626E+00, 2.7488864401E+00, -8.7451487752E-01    ), //const TooN::Vector<>& den_coeff, 
             Ts //double Ts

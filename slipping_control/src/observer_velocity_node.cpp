@@ -48,7 +48,7 @@ using namespace std;
 using namespace TooN;
 
 VEL_SYSTEM_INFO ss_info;
-Observer_Interface* observer;
+sun::Observer_Interface* observer;
 bool use_kf;
 
 Vector<OBS_DIM_IN> input_vector; // u = [ generalizedforce ]
@@ -160,9 +160,9 @@ int main(int argc, char *argv[]){
         Matrix<OBS_DIM_OUT,OBS_DIM_OUT> V = readFileM(path, OBS_DIM_OUT, OBS_DIM_OUT);
         cout << HEADER_PRINT << "V = " << endl << V << endl;
 
-        observer = new Kalman_Filter(  
-                    RK4(
-                        Continuous_System( 
+        observer = new sun::Kalman_Filter(  
+                    sun::RK4(
+                        sun::Continuous_System( 
                             OBS_DIM_STATE, 
                             OBS_DIM_OUT, 
                             OBS_DIM_IN, 
@@ -187,10 +187,10 @@ int main(int argc, char *argv[]){
         Matrix<> L = readFileM(path, OBS_DIM_STATE, OBS_DIM_OUT);
         cout << HEADER_PRINT << " L= " << endl << L << endl;
 
-        observer = new Observer_SS_Incapsuler( 
-                    RK4(
-                        Continuous_Luenberger_Observer(
-                            Continuous_System( 
+        observer = new sun::Observer_SS_Incapsuler( 
+                    sun::RK4(
+                        sun::Continuous_Luenberger_Observer(
+                            sun::Continuous_System( 
                                 OBS_DIM_STATE, 
                                 OBS_DIM_OUT, 
                                 OBS_DIM_IN, 

@@ -13,17 +13,17 @@
 - git:
     local-name: sun_learning_lib
     uri: http://github.com/marcocostanzo/sun_learning_lib.git
-    version: V2
+    version: master
 
 - git:
     local-name: sun_systems_lib
     uri: http://github.com/marcocostanzo/sun_systems_lib.git
-    version: V2
+    version: master
 
 - git:
     local-name: sun_ros_msgs
     uri: http://github.com/marcocostanzo/sun_ros_msgs.git
-    version: V2
+    version: master
 
 - git:
     local-name: slipping_control

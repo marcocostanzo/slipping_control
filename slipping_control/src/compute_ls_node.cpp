@@ -55,12 +55,16 @@ void contact_force_Callback (const slipping_control_msgs::ContactForcesStamped::
 
     //Sigma
     ls_msg.sigma = calculateSigma( msg->forces.ft, msg->forces.taun, ls_info );
-    if(isnan(ls_msg.sigma)){
+    if(isnan(ls_msg.sigma))
+    {
+        ROS_WARN_STREAM_THROTTLE(1.0, HEADER_PRINT << "sigma nan");
         ls_msg.sigma = SIGMA_DEFAULT_VALUE;
     }
     if(ls_msg.sigma>SIGMA_MAX_VALUE){
+        ROS_WARN_STREAM_THROTTLE(1.0, HEADER_PRINT << "to +MAX_VALUE");
         ls_msg.sigma = SIGMA_MAX_VALUE;
     } else if(ls_msg.sigma<-SIGMA_MAX_VALUE){
+        ROS_WARN_STREAM_THROTTLE(1.0, HEADER_PRINT << "to -MAX_VALUE");
         ls_msg.sigma = -SIGMA_MAX_VALUE;
     }
 

@@ -186,6 +186,43 @@ double computeCOR_outsideLS_tilde(double ft_friction_tilde, double taun_friction
 */
 double computeCOR_insideLS_tilde(double ft_friction_tilde, double taun_friction_tilde, double gamma);
 
+double ft_ls_star_tilde(double c_tilde, const std::vector<SIGMA_INFO>& info);
+
+double taun_ls_star_tilde(double c_tilde, const std::vector<GAUSS_INFO>& info);
+
+/*Support functions*/
+double c_tilde_insideLS_J_zero(double c_tilde, double sigma, double gamma,
+                               const boost::function<double(double)>& ft_tilde_star_ls_fcn,
+                               const boost::function<double(double)>& taun_tilde_star_ls_fcn);
+
+double c_tilde_insideLS_grad_J_zero(double c_tilde, double sigma, double gamma,
+                                    const boost::function<double(double)>& ft_tilde_star_ls_fcn,
+                                    const boost::function<double(double)>& d_ft_tilde_star_ls_fcn,
+                                    const boost::function<double(double)>& taun_tilde_star_ls_fcn,
+                                    const boost::function<double(double)>& d_taun_tilde_star_ls_fcn);
+
+double c_tilde_outsideLS_J_zero(double c_tilde, double ft_friction_tilde, double taun_friction_tilde, double xik_nuk,
+                                const boost::function<double(double)>& ft_tilde_star_ls_fcn,
+                                const boost::function<double(double)>& taun_tilde_star_ls_fcn);
+
+double c_tilde_outsideLS_grad_J_zero(double c_tilde, double ft_friction_tilde, double taun_friction_tilde,
+                                     double xik_nuk, const boost::function<double(double)>& ft_tilde_star_ls_fcn,
+                                     const boost::function<double(double)>& d_ft_tilde_star_ls_fcn,
+                                     const boost::function<double(double)>& taun_tilde_star_ls_fcn,
+                                     const boost::function<double(double)>& d_taun_tilde_star_ls_fcn);
+
+double sigm_fun(double x, double gain, double exponent, double mean);
+
+double d_ft_ls_star_tilde(double c_tilde, const std::vector<SIGMA_INFO>& info);
+
+double d_sigm_fun(double x, double gain, double exponent, double mean);
+
+double gauss_fun(double x, double gain, double mean, double sigma_square);
+
+double d_taun_ls_star_tilde(double c_tilde, const std::vector<GAUSS_INFO>& info);
+
+double d_gauss_fun(double x, double gain, double mean, double sigma_square);
+
 /*
   Compute Fn_ls,
   This fcn uses the most (numerically) roboust way

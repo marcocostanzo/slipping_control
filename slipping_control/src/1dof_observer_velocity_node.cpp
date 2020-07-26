@@ -63,7 +63,7 @@ void setInitialConditions();
 /**********************/
 
 /*ROS CALLBACK*/
-
+double betaA;
 void sub_ls_combined(const slipping_control_msgs::LSCombinedStamped::ConstPtr& msg)
 {
 
@@ -77,6 +77,8 @@ void sub_ls_combined(const slipping_control_msgs::LSCombinedStamped::ConstPtr& m
 
     y_kf[0] = msg->generalized_force;
     input_vector[0] = msg->generalized_force;
+
+    ss_info.beta_o2 = M_PI* pow(msg->radius,4)*betaA*(0.5 + pow(msg->cor_tilde,2));
 
 }
 
@@ -113,7 +115,8 @@ int main(int argc, char *argv[]){
     nh_private.param( "Io" , ss_info.Io, 1.4E-3 );
     nh_private.param( "Mo" , ss_info.Mo, 0.35 );
     nh_private.param( "b" , ss_info.b, 0.0 );
-    nh_private.param( "beta_o" , ss_info.beta_o2, 0.07 );
+    nh_private.param( "betaA" , betaA, 0.07 );
+    // nh_private.param( "beta_o" , ss_info.beta_o2, 0.07 );
     nh_private.param( "sigma_0" , ss_info.sigma_02, 1.0E2 );
     nh_private.param( "min_gen_max_force" , MIN_GEN_MAX_FORCE, 0.001 );
     double l;

@@ -58,7 +58,7 @@
 	<arg name="Io" default="7.4013e-04"/>
 	<arg name="Mo" default="0.350"/>
 	<arg name="b" default="0.0"/>
-	<arg name="beta_o" default="0.02"/>
+	<arg name="betaA" default="0.02"/>
 	<arg name="sigma_0" default="50.0"/>
 	<arg name="l" default="1000.0"/>
 

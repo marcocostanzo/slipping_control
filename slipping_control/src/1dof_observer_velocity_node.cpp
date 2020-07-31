@@ -79,6 +79,7 @@ void sub_ls_combined(const slipping_control_msgs::LSCombinedStamped::ConstPtr& m
     input_vector[0] = msg->generalized_force;
 
     ss_info.beta_o2 = M_PI* pow(msg->radius,4)*betaA*(0.5 + pow(msg->cor_tilde,2));
+    // ss_info.beta_o2 = 0.06;
 
 }
 

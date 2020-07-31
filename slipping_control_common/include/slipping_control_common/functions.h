@@ -169,7 +169,7 @@ bool isInsideNLS(double ft_friction_tilde, double taun_friction_tilde);
   It can throw an exception if the algorithm does not converged for some reason
 */
 double computeCOR_tilde(double ft_friction_tilde, double taun_friction_tilde, double gamma, double xik_nuk,
-                        double TAUN_TILDE_EPS, double FT_TILDE_EPS);
+                        double FT_TILDE_EPS, double TAUN_TILDE_EPS, bool& is_inside_ls);
 
 /*
   Compute cor_tilde (COR) in the hypotesis that the friction point is OUTSIDE the LS.

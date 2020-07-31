@@ -10,4 +10,4 @@ float64 generalized_max_force
 float64 generalized_force
 float64 fn_ls
 float64 fn_ls_free_pivot
-
+bool is_inside_ls

@@ -284,6 +284,7 @@ int main(int argc, char *argv[]){
             cout << HEADER_PRINT << "w = " << (w) << endl;
             cout << HEADER_PRINT << "w_d = " << (w_d) << endl;
             cout << HEADER_PRINT << "Error = " << (w_d - w) << endl;
+            cout << HEADER_PRINT << "fnd = " << fnd.data << endl;
             fnd.header.stamp = ros::Time::now();
 
             /*Security check*/

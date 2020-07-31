@@ -30,11 +30,10 @@
 //#define DEBUG_FZERO
 #define LS_USE_QUADRANT_1_4
 
-#define SIGMA_DEFAULT_VALUE 0.0
-#define SIGMA_MAX_VALUE 30.0
+#define FT_EPS 0.3
+#define TAUN_EPS 0.003
 
-#define TAUN_TILDE_EPS 0.003
-#define FT_TILDE_EPS 0.3
+#define MIN_FN 0.3
 
 #define HEADER_PRINT BOLDYELLOW "[" << ros::this_node::getName() << "] " CRESET
 
@@ -56,12 +55,24 @@ double MAX_COR_TILDE;
 
 void contact_force_Callback(const slipping_control_msgs::ContactForcesStamped::ConstPtr& msg)
 {
+
+  if(msg->forces.fn < MIN_FN)
+  {
+    return;
+  }
+
   double cor_tilde;
+  bool is_inside_ls;
+
+  double ft_tilde = msg->forces.ft/getMaxFt(msg->forces.fn, ls_info.mu);
+  double taun_tilde = msg->forces.taun/getMaxTaun(msg->forces.fn, ls_info);
+  double ft_tilde_eps = FT_EPS/getMaxFt(msg->forces.fn, ls_info.mu);
+  double taun_tilde_eps = TAUN_EPS/getMaxTaun(msg->forces.fn, ls_info);
 
   try
   {
-    cor_tilde = computeCOR_tilde(msg->forces.ft, msg->forces.taun, ls_info.gamma, ls_info.xik_nuk, TAUN_TILDE_EPS,
-                                 FT_TILDE_EPS);
+    cor_tilde = computeCOR_tilde(ft_tilde, taun_tilde, ls_info.gamma, ls_info.xik_nuk, ft_tilde_eps,
+                                 taun_tilde_eps, is_inside_ls);
   }
   catch (const std::exception& e)
   {
@@ -69,18 +80,23 @@ void contact_force_Callback(const slipping_control_msgs::ContactForcesStamped::C
     return;
   }
 
-  // Fix cor_tilde values
-  if (std::isinf(cor_tilde))
+  if (std::isnan(cor_tilde))
   {
-    if (cor_tilde > 0)
-    {
-      cor_tilde = fabs(MAX_COR_TILDE);
-    }
-    else
-    {
-      cor_tilde = -fabs(MAX_COR_TILDE);
-    }
+    return;
   }
+
+  // Fix cor_tilde values
+  if (cor_tilde > MAX_COR_TILDE)
+  {
+    cor_tilde = MAX_COR_TILDE;
+  }
+  else if (cor_tilde < -MAX_COR_TILDE)
+  {
+    cor_tilde = -MAX_COR_TILDE;
+  }
+
+  ls_msg.cor_tilde = cor_tilde;
+  ls_msg.is_inside_ls = is_inside_ls;
 
   // Compute Normalized LS (the actual sign is -sign(omega))
   ls_msg.ft_tilde_ls = ft_ls_star_tilde(ls_msg.cor_tilde, *sigma_info);

@@ -26,13 +26,13 @@ using namespace std;
 Slipping_Control_Client::Slipping_Control_Client( ros::NodeHandle& nh, bool gripper_active )
 :
 active(gripper_active),
-ac_home_("/wsg50/home_gripper_action", true),
-ac_grasp_("/wsg50/grasp_action", true),
-ac_sc_("/wsg50/slipping_control_action", true)
+ac_home_("/slipping_control/home_gripper_action", true),
+ac_grasp_("/slipping_control/grasp_action", true),
+ac_sc_("/slipping_control/slipping_control_action", true)
 {
-    service_client_get_state_ = nh.serviceClient<slipping_control_msgs::GetState>("/wsg50/slipping_control/get_state");
-    service_client_ch_params0_ = nh.serviceClient<slipping_control_msgs::ChLSParams>("/wsg50/ls_0/change_params");
-    service_client_ch_params1_ = nh.serviceClient<slipping_control_msgs::ChLSParams>("/wsg50/ls_1/change_params");
+    service_client_get_state_ = nh.serviceClient<slipping_control_msgs::GetState>("/slipping_control/get_state");
+    service_client_ch_params0_ = nh.serviceClient<slipping_control_msgs::ChLSParams>("/slipping_control/finger0/ls/change_params");
+    service_client_ch_params1_ = nh.serviceClient<slipping_control_msgs::ChLSParams>("/slipping_control/finger1/ls/change_params");
 
     if(active)
     {

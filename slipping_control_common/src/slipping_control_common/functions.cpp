@@ -99,8 +99,7 @@ double getRadius(double fn, const LS_INFO& ls_info)
   return ls_info.delta * pow(fn, ls_info.gamma);
 }
 
-bool isInsideNLS(double ft_friction_tilde, double taun_friction_tilde, double& c_tilde,
-                 double gamma)
+bool isInsideNLS(double ft_friction_tilde, double taun_friction_tilde, double& c_tilde, double gamma)
 {
   c_tilde = computeCOR_insideLS_tilde(ft_friction_tilde, taun_friction_tilde, gamma);
   return ((pow(ft_friction_tilde, 2) + pow(taun_friction_tilde, 2)) <=
@@ -109,12 +108,12 @@ bool isInsideNLS(double ft_friction_tilde, double taun_friction_tilde, double& c
 
 bool isInsideNLS(double ft_friction_tilde, double taun_friction_tilde)
 {
-    double c_tilde;
-    return isInsideNLS(ft_friction_tilde, taun_friction_tilde, c_tilde);
+  double c_tilde;
+  return isInsideNLS(ft_friction_tilde, taun_friction_tilde, c_tilde);
 }
 
-double computeCOR_tilde(double ft_friction_tilde, double taun_friction_tilde, double gamma, double xik_nuk, double TAUN_TILDE_EPS,
-                        double FT_TILDE_EPS)
+double computeCOR_tilde(double ft_friction_tilde, double taun_friction_tilde, double gamma, double xik_nuk,
+                        double FT_TILDE_EPS, double TAUN_TILDE_EPS, bool& is_inside_nls)
 {
   bool taun_is_zero = fabs(taun_friction_tilde) < TAUN_TILDE_EPS;
   bool ft_is_zero = fabs(ft_friction_tilde) < FT_TILDE_EPS;
@@ -126,7 +125,18 @@ double computeCOR_tilde(double ft_friction_tilde, double taun_friction_tilde, do
 
   if (taun_is_zero && !ft_is_zero)
   {
-    return INFINITY;  // CoR INFINITY
+    is_inside_nls = fabs(ft_friction_tilde) < 1.0;
+    // CoR INFINITY
+    // let assign a sign to the CoR
+    if (taun_friction_tilde > 0.0)
+    {
+      return -INFINITY * sign(ft_friction_tilde);
+    }
+    if (taun_friction_tilde < 0.0)
+    {
+      return INFINITY * sign(ft_friction_tilde);
+    }
+    return INFINITY;
   }
 
   if (!taun_is_zero && ft_is_zero)
@@ -135,14 +145,15 @@ double computeCOR_tilde(double ft_friction_tilde, double taun_friction_tilde, do
   }
 
   double c_tilde;
-
-  if (isInsideNLS(ft_friction_tilde, taun_friction_tilde, c_tilde, gamma))
+  is_inside_nls = isInsideNLS(ft_friction_tilde, taun_friction_tilde, c_tilde, gamma);
+  if (is_inside_nls)
   {
     return c_tilde;
   }
 
   if (!taun_is_zero)
   {
+    // return c_tilde;
     return computeCOR_outsideLS_tilde(ft_friction_tilde, taun_friction_tilde, xik_nuk);
   }
 
@@ -151,10 +162,10 @@ double computeCOR_tilde(double ft_friction_tilde, double taun_friction_tilde, do
 
 double computeCOR_outsideLS_tilde(double ft_friction_tilde, double taun_friction_tilde, double xik_nuk)
 {
-  double GD_GAIN = 1.0;
-  double GD_COST_TOL = 1.0E-6;
-  double FIND_ZERO_LAMBDA = 1.0E-10;
-  int MAX_GD_ITER = 150;
+  double GD_GAIN = 0.01;
+  double GD_COST_TOL = 1.0E-4;
+  double FIND_ZERO_LAMBDA = 1.0E-8;
+  int MAX_GD_ITER = 10000;
 
   double initial_point = -sign(ft_friction_tilde) * sign(taun_friction_tilde);
 
@@ -184,7 +195,7 @@ double computeCOR_outsideLS_tilde(double ft_friction_tilde, double taun_friction
     throw std::runtime_error("findZero max iter in computeCOR_outsideLS_tilde");
   }
 
-  if(std::isnan(c_tilde) || std::isinf(c_tilde))
+  if (std::isnan(c_tilde) || std::isinf(c_tilde))
   {
     throw std::runtime_error("findZero not converged in computeCOR_outsideLS_tilde");
   }
@@ -202,10 +213,10 @@ double computeCOR_outsideLS_tilde(double ft_friction_tilde, double taun_friction
 
 double computeCOR_insideLS_tilde(double ft_friction_tilde, double taun_friction_tilde, double gamma)
 {
-  double GD_GAIN = 1.0;
+  double GD_GAIN = 0.1;
   double GD_COST_TOL = 1.0E-6;
   double FIND_ZERO_LAMBDA = 1.0E-10;
-  int MAX_GD_ITER = 150;
+  int MAX_GD_ITER = 10000;
 
   double sigma = calculateSigma(ft_friction_tilde, taun_friction_tilde, gamma);
 
@@ -236,9 +247,9 @@ double computeCOR_insideLS_tilde(double ft_friction_tilde, double taun_friction_
     throw std::runtime_error("findZero max iter in computeCOR_insideLS_tilde");
   }
 
-  if(std::isnan(c_tilde) || std::isinf(c_tilde))
+  if (std::isnan(c_tilde) || std::isinf(c_tilde))
   {
-    throw std::runtime_error("findZero not converged in computeCOR_outsideLS_tilde");
+    throw std::runtime_error("findZero not converged in computeCOR_insideLS_tilde");
   }
 
   // check domain

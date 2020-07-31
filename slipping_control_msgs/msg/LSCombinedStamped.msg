@@ -15,4 +15,6 @@ float64 generalized_force0
 float64 generalized_force1
 float64 fn_ls
 float64 fn_ls_free_pivot
-
+bool is_inside_ls0
+bool is_inside_ls1
+bool is_inside_ls

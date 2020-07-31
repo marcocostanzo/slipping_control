@@ -1,0 +1,32 @@
+<launch>
+
+<arg name="wrench_0" />
+<arg name="wrench_1" />
+
+<arg name="contact_0" />
+<arg name="contact_1" />
+
+<arg name="b_fix_contact_forces" default="false" />
+
+
+<node name="wrench_stamped_2_contact_force_stamped_0" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
+    <param name="input_topic" type="string" value="$(arg wrench_0)"/>
+    <param if="$(arg b_fix_contact_forces)" name="output_topic" type="string" value="$(arg contact_0)_non_fixed"/>
+    <param unless="$(arg b_fix_contact_forces)" name="output_topic" type="string" value="$(arg contact_0)"/>
+</node>
+
+<node name="wrench_stamped_2_contact_force_stamped_1" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
+    <param name="input_topic" type="string" value="$(arg wrench_1)"/>
+    <param if="$(arg b_fix_contact_forces)" name="output_topic" type="string" value="$(arg contact_1)_non_fixed"/>
+    <param unless="$(arg b_fix_contact_forces)" name="output_topic" type="string" value="$(arg contact_1)"/>
+</node>
+
+<node if="$(arg b_fix_contact_forces)" name="contact_force_fix" pkg="slipping_control" type="contact_force_fix" output="screen">
+    <param name="input_topic0" type="string" value="$(arg contact_0)_non_fixed"/>
+    <param name="input_topic1" type="string" value="$(arg contact_1)_non_fixed"/>
+    <param name="output_topic0" type="string" value="$(arg contact_0)"/>
+    <param name="output_topic1" type="string" value="$(arg contact_1)"/>
+</node>
+
+
+</launch>

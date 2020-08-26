@@ -31,7 +31,7 @@
 #define LS_USE_QUADRANT_1_4
 
 #define FT_EPS 0.3
-#define TAUN_EPS 0.003
+#define TAUN_EPS 0.0003
 
 #define MIN_FN 0.3
 

@@ -20,7 +20,7 @@
 */
 
 #ifndef SLIPPING_CONTROL_CLIENT_H
-#define SLISLIPPING_CONTROL_CLIENT_H
+#define SLIPPING_CONTROL_CLIENT_H
 
 #include <actionlib/client/simple_action_client.h>
 #include "slipping_control_msgs/HomeGripperAction.h"

@@ -1205,7 +1205,7 @@ bool goToZeroDeg()
     ros::Rate loop_rate(hz_);
 
     cout << HEADER_PRINT_STATE " goToZeroDeg() - Decreasing grasp force... " << endl;
-    while( fr > (fn_ls_free_pivot_ + 0.2) )
+    while( fr > (fn_ls_free_pivot_) )
     {
         if (!ros::ok()) {
             cout << HEADER_PRINT_STATE BOLDRED " Ros not ok() in goToZeroDeg()" CRESET << endl;

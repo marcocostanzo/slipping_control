@@ -74,11 +74,14 @@ public:
 
 bool active;
 
-Slipping_Control_Client( ros::NodeHandle& nh, bool active = false );
+Slipping_Control_Client( ros::NodeHandle& nh, bool active = false, const std::string& ns_prefix = "/" );
 
 void home( bool wait_result = true );
 
-void grasp( double force, double slope = 0.0, bool wait_result = true );
+bool graspIsDone();
+void abortGrasp(bool wait_for_result = true);
+void grasp( double force, double slope = 0.0, bool wait_result = true,
+const actionlib::SimpleActionClient< slipping_control_msgs::GraspAction >::SimpleDoneCallback& done_cb = actionlib::SimpleActionClient< slipping_control_msgs::GraspAction >::SimpleDoneCallback() );
 
 void gripper_pivoting( bool wait_result = true );
 

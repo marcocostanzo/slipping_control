@@ -494,9 +494,10 @@ void executeGraspCB( const slipping_control_msgs::GraspGoalConstPtr &goal )
         {
             //From a stable state
             dyn_controller_set_running(false);// To be sure
+            int prev_state = state_;
             state_ = STATE_GRASPING;
             b_grasping_preemted_ = false;
-            return doGraspingAction(goal);   
+            return doGraspingAction(goal, prev_state);   
         }
 
         case STATE_GRASPING:{
@@ -505,7 +506,7 @@ void executeGraspCB( const slipping_control_msgs::GraspGoalConstPtr &goal )
             abortGrasping();
             state_ = STATE_GRASPING;
             b_grasping_preemted_ = false;
-            return doGraspingAction(goal);
+            return doGraspingAction(goal, STATE_UNDEFINED);
         }
 
         case STATE_TO_GRIPPER_PIVOTING:
@@ -518,7 +519,7 @@ void executeGraspCB( const slipping_control_msgs::GraspGoalConstPtr &goal )
             abortSlippingControl();
             state_ = STATE_GRASPING;
             b_grasping_preemted_ = false;
-            return doGraspingAction(goal);
+            return doGraspingAction(goal, STATE_GRASPED);
         }
 
         default:
@@ -575,7 +576,7 @@ void graspActionPublishForce( double force )
     }
 }
 
-void doGraspingAction(const slipping_control_msgs::GraspGoalConstPtr &goal)
+void doGraspingAction(const slipping_control_msgs::GraspGoalConstPtr &goal, int on_abort_state)
 {
 
     cout << HEADER_PRINT_STATE "[Action Grasp] Begin." << endl;
@@ -603,11 +604,11 @@ void doGraspingAction(const slipping_control_msgs::GraspGoalConstPtr &goal)
     b_force1_arrived_ = false;
     while( !b_grasp_force_arrived_ || !b_force0_arrived_ || !b_force1_arrived_ ){
         if (grasp_as_.isPreemptRequested() || b_grasping_preemted_ || !ros::ok()) {
-            graspActionSetPreempted();
             subF0_.shutdown();
             subF1_.shutdown();
             subGraspForce_.shutdown();
-            state_ = STATE_UNDEFINED; //<-- I really do not know....
+            state_ = on_abort_state; //<-- I really do not know....
+            graspActionSetPreempted();
             return;
         }
         ros::spinOnce();
@@ -626,11 +627,11 @@ void doGraspingAction(const slipping_control_msgs::GraspGoalConstPtr &goal)
 
         while ( ros::ok() && (grasp_force_m_ <  contact_thr_force_local || f0_m_ < contact_thr_force_local/2.0 || f1_m_ < contact_thr_force_local/2.0) ){
             if (grasp_as_.isPreemptRequested() || b_grasping_preemted_ || !ros::ok()) {
-                graspActionSetPreempted();
                 subF0_.shutdown();
                 subF1_.shutdown();
                 subGraspForce_.shutdown();
                 state_ = STATE_UNDEFINED; //<-- Contact not compleate... so?
+                graspActionSetPreempted();
                 return;
             }
 
@@ -670,9 +671,9 @@ void doGraspingAction(const slipping_control_msgs::GraspGoalConstPtr &goal)
     double sec = ros::Time::now().toSec() - sec_init; 
     while ( ros::ok() && sec < ramp_total_time ) {
         if (grasp_as_.isPreemptRequested() || b_grasping_preemted_ || !ros::ok()) {
-            graspActionSetPreempted();
-            subGraspForce_.shutdown();
             state_ = STATE_GRASPED; //<-- Grasped but with a different final force
+            subGraspForce_.shutdown();
+            graspActionSetPreempted();
             return;
         }
         
@@ -1014,7 +1015,7 @@ void executeSlippingControlCB( const slipping_control_msgs::SlippingControlGoalC
                 case STATE_TO_DYN_SLIPPING_AVOIDANCE:
                 case STATE_OBJECT_PIVOTING:
                 {
-                    //From a slipping control transi tionstate | this should not happen
+                    //From a slipping control transitionstate | this should not happen
                     cout << HEADER_PRINT_STATE "[Action SlippingControl][MODE_OBJECT_PIVOTING] " BOLDYELLOW "State is a Slipping Control state transition | this should not happen" CRESET << endl;
                     state_ = STATE_OBJECT_PIVOTING;
                     if( objectPivoting( goal, resp_str) ){

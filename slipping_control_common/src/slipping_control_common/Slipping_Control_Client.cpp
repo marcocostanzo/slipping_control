@@ -23,16 +23,16 @@
 
 using namespace std;
 
-Slipping_Control_Client::Slipping_Control_Client( ros::NodeHandle& nh, bool gripper_active )
+Slipping_Control_Client::Slipping_Control_Client( ros::NodeHandle& nh, bool gripper_active, const std::string& ns_prefix )
 :
 active(gripper_active),
-ac_home_("/slipping_control/home_gripper_action", true),
-ac_grasp_("/slipping_control/grasp_action", true),
-ac_sc_("/slipping_control/slipping_control_action", true)
+ac_home_(ns_prefix + "slipping_control/home_gripper_action", true),
+ac_grasp_(ns_prefix + "slipping_control/grasp_action", true),
+ac_sc_(ns_prefix + "slipping_control/slipping_control_action", true)
 {
-    service_client_get_state_ = nh.serviceClient<slipping_control_msgs::GetState>("/slipping_control/get_state");
-    service_client_ch_params0_ = nh.serviceClient<slipping_control_msgs::ChLSParams>("/slipping_control/finger0/ls/change_params");
-    service_client_ch_params1_ = nh.serviceClient<slipping_control_msgs::ChLSParams>("/slipping_control/finger1/ls/change_params");
+    service_client_get_state_ = nh.serviceClient<slipping_control_msgs::GetState>(ns_prefix + "slipping_control/get_state");
+    service_client_ch_params0_ = nh.serviceClient<slipping_control_msgs::ChLSParams>(ns_prefix + "slipping_control/finger0/ls/change_params");
+    service_client_ch_params1_ = nh.serviceClient<slipping_control_msgs::ChLSParams>(ns_prefix + "slipping_control/finger1/ls/change_params");
 
     if(active)
     {
@@ -61,14 +61,29 @@ void Slipping_Control_Client::home( bool wait_result )
     }
 }
 
-void Slipping_Control_Client::grasp( double force, double slope, bool wait_result )
+bool Slipping_Control_Client::graspIsDone()
+{
+    return ac_grasp_.getState().isDone();
+}
+
+void Slipping_Control_Client::abortGrasp(bool wait_for_result)
+{
+    ac_grasp_.cancelGoal();
+    if(wait_for_result)
+    {
+        ac_grasp_.waitForResult();
+    }
+}
+
+void Slipping_Control_Client::grasp( double force, double slope, bool wait_result,
+const actionlib::SimpleActionClient< slipping_control_msgs::GraspAction >::SimpleDoneCallback& done_cb)
 {
     if(!active) return;
 
     slipping_control_msgs::GraspGoal goal;
     goal.desired_force = force;
     goal.force_slope = slope;
-    ac_grasp_.sendGoal(goal);
+    ac_grasp_.sendGoal(goal, done_cb);
     if(wait_result)
     {
         ac_grasp_.waitForResult();

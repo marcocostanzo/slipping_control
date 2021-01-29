@@ -25,10 +25,10 @@
 #include "slipping_control_msgs/ContactForcesStamped.h"
 #include "Helper.h"
 
-#define SIGN_FIX_TAUN_TRIGGER 0.001
-#define SCHMITT_TRIGGER_MIN 0.001
-#define SCHMITT_TRIGGER_MAX 0.001
-#define SCHMITT_TRIGGER_OUT_WHEN_ACTIVE 0.001
+#define SIGN_FIX_TAUN_TRIGGER 0.003
+#define SCHMITT_TRIGGER_MIN 0.0005
+#define SCHMITT_TRIGGER_MAX 0.002
+#define SCHMITT_TRIGGER_OUT_WHEN_ACTIVE 0.002
 
 using namespace std;
 

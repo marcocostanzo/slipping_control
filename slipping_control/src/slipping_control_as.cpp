@@ -1530,7 +1530,7 @@ void publish_force_ref( double force )
 void publish_state(double hz, ros::NodeHandle& nh_public, Slipping_Control_AS* server)
 {
 
-    ros::Publisher pubState = nh_public.advertise<slipping_control_msgs::StateStamped>("/slipping_control/state", 1);
+    ros::Publisher pubState = nh_public.advertise<slipping_control_msgs::StateStamped>("slipping_control/state", 1);
     
     slipping_control_msgs::StateStamped state_msg;
 

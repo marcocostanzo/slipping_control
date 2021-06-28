@@ -296,3 +296,83 @@ target_link_libraries(velocity_controller
   ${catkin_LIBRARIES}
 )
 #########################################
+
+#########################################
+add_executable(generate_obs_input
+  src/generate_obs_input.cpp
+)
+add_dependencies(generate_obs_input ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(generate_obs_input
+  ${catkin_LIBRARIES}
+)
+#########################################
+
+#########################################
+add_executable(compute_coulomb
+  src/compute_coulomb_node.cpp
+)
+add_dependencies(compute_coulomb ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(compute_coulomb
+  ${catkin_LIBRARIES}
+)
+#########################################
+
+#########################################
+add_executable(ft_observer_velocity
+  src/ft_observer_velocity_node.cpp
+)
+add_dependencies(ft_observer_velocity ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(ft_observer_velocity
+  ${catkin_LIBRARIES}
+)
+#########################################
+
+#########################################
+add_executable(static_combine_ft
+  src/static_combine_ft_node.cpp
+)
+add_dependencies(static_combine_ft ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(static_combine_ft
+  ${catkin_LIBRARIES}
+)
+#########################################
+
+#########################################
+add_executable(compute_coulomb_tau
+  src/compute_coulomb_tau_node.cpp
+)
+add_dependencies(compute_coulomb_tau ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(compute_coulomb_tau
+  ${catkin_LIBRARIES}
+)
+#########################################
+
+#########################################
+add_executable(static_combine_1ls
+  src/static_combine_1ls_node.cpp
+)
+add_dependencies(static_combine_1ls ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(static_combine_1ls
+  ${catkin_LIBRARIES}
+)
+#########################################
+
+#########################################
+add_executable(1dof_observer_velocity_v_iiwa
+  src/1dof_observer_velocity_node_v_iiwa.cpp
+)
+add_dependencies(1dof_observer_velocity_v_iiwa ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(1dof_observer_velocity_v_iiwa
+  ${catkin_LIBRARIES}
+)
+#########################################
+
+#########################################
+add_executable(wrench_stamped_2_contact_force_stamped_mod_node
+  src/wrench_stamped_2_contact_force_stamped_mod_node.cpp
+)
+add_dependencies(wrench_stamped_2_contact_force_stamped_mod_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(wrench_stamped_2_contact_force_stamped_mod_node
+  ${catkin_LIBRARIES}
+)
+#########################################

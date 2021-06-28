@@ -578,3 +578,45 @@ Matrix<> vel_sys_1dof_FF_fcn_cont(const Vector<>& x, const Vector<>& u, const VE
 
   return F;
 }
+
+//* OBS VEL VEL 1DOF *//
+
+Vector<> obs_vel_sys_1dof_f_fcn_cont(const Vector<>& x, const Vector<>& y, const VEL_SYSTEM_INFO& info, double l)
+{
+  Vector<2> x_dot = Zeros;
+
+  x_dot[0] = (l/info.Io) * (-info.beta_o2 * x[0] - info.sigma_02 * x[1] + y[0]);
+
+  x_dot[1] = x[0] - (info.sigma_02 / info.f_max_0) * fabs(x[0]) * x[1];
+
+  return x_dot;
+}
+
+Vector<> obs_vel_sys_1dof_h_fcn(const Vector<>& x, const Vector<>& y, const VEL_SYSTEM_INFO& info)
+{
+  Vector<1> ret = makeVector(info.sigma_02 * x[1] + info.beta_o2 * x[0]);
+  return ret;
+}
+
+Matrix<> obs_vel_sys_1dof_FF_fcn_cont(const Vector<>& x, const Vector<>& y, const VEL_SYSTEM_INFO& info, double l)
+{
+  Matrix<2, 2> F = Zeros;
+
+  double den = l / info.Io;
+
+  F(0, 0) = -den * (info.beta_o2);
+
+  F(0, 1) = -info.sigma_02 * den;
+
+  F(1, 0) = 1.0 - info.sigma_02 / info.f_max_0 * x[1] * sign(x[0]);
+
+  F(1, 1) = -info.sigma_02 / info.f_max_0 * fabs(x[0]);
+
+  return F;
+}
+
+Matrix<> obs_vel_sys_HH_fcn(const Vector<>& x, const Vector<>& y, const VEL_SYSTEM_INFO& info)
+{
+  Matrix<2, 3> ret = Data(info.beta_o2, info.sigma_02, 0.0, info.beta_o3, 0.0, info.sigma_03);
+  return ret;
+}

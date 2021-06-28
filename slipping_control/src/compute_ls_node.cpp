@@ -22,7 +22,7 @@
 #include "ros/ros.h"
 #include "slipping_control_common/functions.h"
 #include "slipping_control_msgs/ChLSParams.h"
-#include "slipping_control_msgs/ContactForcesStamped.h"
+#include "slipping_control_msgs/ContactForcesFixStamped.h"
 #include "slipping_control_msgs/LSStamped.h"
 //#include "Helper.h"
 //#include "slipping_control_msgs/SetMu.h"
@@ -30,10 +30,15 @@
 //#define DEBUG_FZERO
 #define LS_USE_QUADRANT_1_4
 
-#define FT_EPS 0.3
+// #define FT_EPS 0.1
+// #define TAUN_EPS 0.00151
+
+// #define MIN_FN 0.05
+
+#define FT_EPS (0.05/2.0)
 #define TAUN_EPS 0.0003
 
-#define MIN_FN 0.3
+#define MIN_FN 0.03
 
 #define HEADER_PRINT BOLDYELLOW "[" << ros::this_node::getName() << "] " CRESET
 
@@ -53,7 +58,26 @@ std::vector<GAUSS_INFO>* gauss_info;  // TAUN
 // Cor_tilde
 double MAX_COR_TILDE;
 
-void contact_force_Callback(const slipping_control_msgs::ContactForcesStamped::ConstPtr& msg)
+/// NEW: FIXED COR
+#include "slipping_control_msgs/FixedCoR.h"
+bool b_use_fixed_cor;
+double fixed_cor_value;
+bool fixed_cor_service_callbk(slipping_control_msgs::FixedCoR::Request& req,
+                              slipping_control_msgs::FixedCoR::Response& res)
+{
+  b_use_fixed_cor = req.use_fixed_cor;
+  fixed_cor_value = req.fixed_cor_value;
+  if(b_use_fixed_cor)
+  {
+    cout << HEADER_PRINT GREEN "Using fixed CoR: " CRESET << fixed_cor_value << endl;
+  }
+  else{
+    cout << HEADER_PRINT GREEN "Using CoR estimation alg: " CRESET << endl;
+  }
+  return true;
+}
+
+void contact_force_Callback(const slipping_control_msgs::ContactForcesFixStamped::ConstPtr& msg)
 {
 
   if(msg->forces.fn < MIN_FN)
@@ -64,15 +88,36 @@ void contact_force_Callback(const slipping_control_msgs::ContactForcesStamped::C
   double cor_tilde;
   bool is_inside_ls;
 
-  double ft_tilde = msg->forces.ft/getMaxFt(msg->forces.fn, ls_info.mu);
-  double taun_tilde = msg->forces.taun/getMaxTaun(msg->forces.fn, ls_info);
-  double ft_tilde_eps = FT_EPS/getMaxFt(msg->forces.fn, ls_info.mu);
-  double taun_tilde_eps = TAUN_EPS/getMaxTaun(msg->forces.fn, ls_info);
+  double taun_filtered = msg->forces.taun_filtered;
+  if(fabs(taun_filtered) < 0.0002)
+  {
+    if(taun_filtered>=0)
+      taun_filtered = 0.0001;
+    else
+      taun_filtered = -0.0001;
+  }
+  double taun = msg->forces.taun;
+  // if(fabs(taun) < 0.001)
+  // {
+  //   taun = 0.0;
+  // }
+
+  double max_ft = getMaxFt(msg->forces.fn, ls_info.mu);
+  double max_taun = getMaxTaun(msg->forces.fn, ls_info, ls_msg.radius);
+
+  double ft_tilde = msg->forces.ft/max_ft;
+  double taun_tilde = taun/max_taun;
+  double taun_fixed_tilde = msg->forces.taun_fixed/max_taun;
+  double ft_tilde_eps = FT_EPS/max_ft;
+  double taun_tilde_eps = TAUN_EPS/max_taun;
 
   try
   {
-    cor_tilde = computeCOR_tilde(ft_tilde, taun_tilde, ls_info.gamma, ls_info.xik_nuk, ft_tilde_eps,
-                                 taun_tilde_eps, is_inside_ls);
+    // cor_tilde = computeCOR_tilde(ft_tilde, taun_fixed_tilde, ls_info.gamma, ls_info.xik_nuk, ft_tilde_eps,
+    //                              taun_tilde_eps, is_inside_ls);
+
+    cor_tilde = computeCOR_tilde(msg->forces.ft/max_ft, taun_filtered/max_taun, ls_info.gamma, ls_info.xik_nuk, 0.0,
+                                 0.0, is_inside_ls);
   }
   catch (const std::exception& e)
   {
@@ -95,6 +140,17 @@ void contact_force_Callback(const slipping_control_msgs::ContactForcesStamped::C
     cor_tilde = -MAX_COR_TILDE;
   }
 
+/// NEW:
+  if(b_use_fixed_cor){
+  if(taun_filtered>0.0)
+  cor_tilde = - fixed_cor_value;///ls_msg.radius;
+  else
+  {
+  cor_tilde = + fixed_cor_value;///ls_msg.radius;
+  }
+  }
+  
+
   ls_msg.cor_tilde = cor_tilde;
   ls_msg.is_inside_ls = is_inside_ls;
 
@@ -114,8 +170,8 @@ void contact_force_Callback(const slipping_control_msgs::ContactForcesStamped::C
   ls_msg.sigma = calculateSigma(ls_msg.ft_tilde_ls, ls_msg.taun_tilde_ls, ls_info.gamma);
 
   // Compute LS & Radius
-  ls_msg.ft_ls = ls_msg.ft_tilde_ls * getMaxFt(msg->forces.fn, ls_info.mu);
-  ls_msg.taun_ls = ls_msg.taun_tilde_ls * getMaxTaun(msg->forces.fn, ls_info, ls_msg.radius);
+  ls_msg.ft_ls = ls_msg.ft_tilde_ls * max_ft;
+  ls_msg.taun_ls = ls_msg.taun_tilde_ls * max_taun;
 
   // Compute COR
   ls_msg.cor = ls_msg.radius * ls_msg.cor_tilde;
@@ -124,12 +180,12 @@ void contact_force_Callback(const slipping_control_msgs::ContactForcesStamped::C
   ls_msg.generalized_max_force = fabs(ls_msg.taun_ls) + fabs(ls_msg.ft_ls * ls_msg.cor);
 
   // Compute Generalized Force
-  ls_msg.generalized_force = msg->forces.taun - ls_msg.cor * msg->forces.ft;
+  ls_msg.generalized_force = taun - ls_msg.cor * msg->forces.ft;
 
   // Compute fn_ls
-  ls_msg.fn_ls = getFn_ls(msg->forces.ft, msg->forces.taun, ls_msg.ft_tilde_ls, ls_msg.taun_tilde_ls, ls_info);
+  ls_msg.fn_ls = getFn_ls(msg->forces.ft, taun, ls_msg.ft_tilde_ls, ls_msg.taun_tilde_ls, ls_info);
   // Compute fn_ls_free_pivot
-  ls_msg.fn_ls_free_pivot = getFn_ls(msg->forces.ft, msg->forces.taun, 1.0, 0.0, ls_info);
+  ls_msg.fn_ls_free_pivot = getFn_ls(msg->forces.ft, taun, 1.0, 0.0, ls_info);
 
   // Fill header
   ls_msg.header = msg->header;
@@ -183,6 +239,7 @@ int main(int argc, char* argv[])
   nh_private.param("mu", ls_info.mu, 0.8);
   nh_private.param("k", ls_info.k, 4.0);
   computeLSInfo(ls_info);
+  std::cout << "AAAAAAAAAAAAA -- MU: " << ls_info.mu << std::endl;
 
   // Cor_tilde
   nh_private.param("max_cor_tilde", MAX_COR_TILDE, 100.0);
@@ -210,6 +267,11 @@ int main(int argc, char* argv[])
   string ch_params_server_str("");
   nh_private.param("service_ch_params", ch_params_server_str, string("ls_change_params"));
   ros::ServiceServer serviceChMu = nh_public.advertiseService(ch_params_server_str, set_params_service_callbk);
+
+  // Server Fixed CoR
+  string fixed_cor_server_str(ch_params_server_str + "_ls_fixed_cor_tilde");
+  //nh_private.param("service_ls_fixed_cor", fixed_cor_server_str, string("ls_change_params"));
+  ros::ServiceServer serviceFixedCoR = nh_public.advertiseService(fixed_cor_server_str, fixed_cor_service_callbk);
 
   ros::spin();
 

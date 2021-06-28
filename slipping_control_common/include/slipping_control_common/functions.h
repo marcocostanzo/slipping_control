@@ -257,4 +257,14 @@ TooN::Vector<> vel_sys_1dof_f_fcn_cont(const TooN::Vector<>& x, const TooN::Vect
 
 TooN::Matrix<> vel_sys_1dof_FF_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& u, const VEL_SYSTEM_INFO& info);
 
+//* OBS VEL VEL 1DOF *//
+
+TooN::Vector<> obs_vel_sys_1dof_f_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& y, const VEL_SYSTEM_INFO& info, double l);
+
+TooN::Vector<> obs_vel_sys_1dof_h_fcn(const TooN::Vector<>& x, const TooN::Vector<>& y, const VEL_SYSTEM_INFO& info);
+
+TooN::Matrix<> obs_vel_sys_1dof_FF_fcn_cont(const TooN::Vector<>& x, const TooN::Vector<>& y, const VEL_SYSTEM_INFO& info, double l);
+
+TooN::Matrix<> obs_vel_sys_HH_fcn(const TooN::Vector<>& x, const TooN::Vector<>& y, const VEL_SYSTEM_INFO& info);
+
 #endif

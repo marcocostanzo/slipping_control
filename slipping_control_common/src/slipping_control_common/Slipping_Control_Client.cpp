@@ -40,8 +40,8 @@ ac_sc_(ns_prefix + "slipping_control/slipping_control_action", true)
         ac_grasp_.waitForServer();
         ac_sc_.waitForServer();
         service_client_get_state_.waitForExistence();
-        service_client_ch_params0_.waitForExistence();
-        service_client_ch_params1_.waitForExistence();
+        // service_client_ch_params0_.waitForExistence();
+        // service_client_ch_params1_.waitForExistence();
     }
 }
 
@@ -198,11 +198,11 @@ void Slipping_Control_Client::change_params(double mu0, double mu1)
         throw "Error in set mu0";
     } 
 
-    srv.request.mu = mu1;
-    if(!service_client_ch_params1_.call(srv))
-    {
-        cout << BOLDRED "Error during set mu1" CRESET << endl;
-        throw "Error in set mu1";
-    } 
+    // srv.request.mu = mu1;
+    // if(!service_client_ch_params1_.call(srv))
+    // {
+    //     cout << BOLDRED "Error during set mu1" CRESET << endl;
+    //     throw "Error in set mu1";
+    // } 
 
 }

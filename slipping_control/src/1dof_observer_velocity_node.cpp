@@ -47,7 +47,7 @@ using namespace std;
 using namespace TooN;
 
 VEL_SYSTEM_INFO ss_info;
-sun::Observer_Interface* observer;
+sun::SS_Interface* ss_observer;
 
 Vector<OBS_DIM_IN> input_vector; // u = [ generalizedforce ]
 Vector<OBS_DIM_OUT> y_kf = Zeros;
@@ -79,7 +79,7 @@ void sub_ls_combined(const slipping_control_msgs::LSCombinedStamped::ConstPtr& m
     input_vector[0] = msg->generalized_force;
 
     ss_info.beta_o2 = M_PI* pow(msg->radius,4)*betaA*(0.5 + pow(msg->cor_tilde,2));
-    // ss_info.beta_o2 = 0.06;
+    // ss_info.beta_o2 = betaA;
 
 }
 
@@ -117,7 +117,6 @@ int main(int argc, char *argv[]){
     nh_private.param( "Mo" , ss_info.Mo, 0.35 );
     nh_private.param( "b" , ss_info.b, 0.0 );
     nh_private.param( "betaA" , betaA, 0.07 );
-    // nh_private.param( "beta_o" , ss_info.beta_o2, 0.07 );
     nh_private.param( "sigma_0" , ss_info.sigma_02, 1.0E2 );
     nh_private.param( "min_gen_max_force" , MIN_GEN_MAX_FORCE, 0.001 );
     double l;
@@ -141,24 +140,20 @@ int main(int argc, char *argv[]){
     L(0,0) = l;
     cout << HEADER_PRINT << " L= " << endl << L << endl;
 
-    observer = new sun::Observer_SS_Incapsuler( 
-                sun::RK4(
-                    sun::Continuous_Luenberger_Observer(
-                        sun::Continuous_System( 
-                            OBS_DIM_STATE, 
-                            OBS_DIM_OUT, 
-                            OBS_DIM_IN, 
-                            boost::bind( vel_sys_1dof_f_fcn_cont, _1, _2, boost::ref(ss_info) ), 
-                            boost::bind( vel_sys_1dof_h_fcn, _1, _2, boost::ref(ss_info) ), 
-                            boost::bind( vel_sys_1dof_FF_fcn_cont, _1, _2, boost::ref(ss_info) ), 
-                            boost::bind( vel_sys_1dof_HH_fcn, _1, _2, boost::ref(ss_info) ) 
-                        ),//Continuous_System 
-                        L
-                    ),//Continuous_Luenberger_Observer
-                    1.0/Hz,
-                    false //<- true to use u_n_1_ in RK4
-                )//RK4
-                );//Observer_SS_Incapsuler
+    ss_observer = 
+        new sun::RK4(
+            sun::Continuous_System( 
+                OBS_DIM_STATE, 
+                OBS_DIM_OUT, 
+                OBS_DIM_IN, 
+                boost::bind( obs_vel_sys_1dof_f_fcn_cont, _1, _2, boost::ref(ss_info), l ), 
+                boost::bind( obs_vel_sys_1dof_h_fcn, _1, _2, boost::ref(ss_info) ), 
+                boost::bind( obs_vel_sys_1dof_FF_fcn_cont, _1, _2, boost::ref(ss_info), l ), 
+                boost::bind( obs_vel_sys_HH_fcn, _1, _2, boost::ref(ss_info) ) 
+            ), 
+            1.0/Hz, 
+            false //<- true to use u_n_1_ in RK4
+        );
 
     ros::ServiceServer serviceSetRunning = nh_public.advertiseService(set_running_service_str, setRunning_callbk);
 
@@ -188,14 +183,13 @@ int main(int argc, char *argv[]){
             continue;
         }
 
-        //observer->pushPrecInput(); <-- expose system_ in Observer_SS_Incapsuler/Kalman_Filter to implement this. remember to set true in the constructor RK4
-        y_hat_k_k1 = observer->obs_apply( input_vector, y_kf  );
+        y_hat_k_k1 = ss_observer->apply( y_kf  );
 
         //Fill Msgs
-        ext_vel_msg.data = observer->getState()[0];
-        ext_state_msg.data.data[0] = observer->getState()[0];
-        ext_state_msg.data.data[1] = observer->getState()[1];
-        ext_state_msg.data.data[2] = observer->getState()[2];
+        ext_vel_msg.data = ss_observer->getState()[0];
+        ext_state_msg.data.data[0] = ss_observer->getState()[0];
+        ext_state_msg.data.data[1] = ss_observer->getState()[1];
+        ext_state_msg.data.data[2] = ss_observer->getState()[2];
         ext_measure_msg.data.data[0] = y_hat_k_k1[0];
         ext_measure_msg.data.data[1] = y_hat_k_k1[1];
         ext_measure_msg.header.stamp = ros::Time::now();
@@ -203,7 +197,10 @@ int main(int argc, char *argv[]){
         ext_vel_msg.header.stamp = ext_measure_msg.header.stamp;
 
         /*Security check*/
-        if(     isnan(observer->getState()[0]) || isnan(observer->getState()[1]) || isnan(observer->getState()[2]) )
+        if( isnan(ss_observer->getState()[0])
+        || isnan(ss_observer->getState()[1]) 
+        || isnan(ss_observer->getState()[2]) 
+        )
         {
                 //cout << HEADER_PRINT << BOLDRED "NANs... EXIT..." CRESET << endl;
                 cout << HEADER_PRINT << BOLDRED "NANs... RESET! ..." CRESET << endl;
@@ -230,20 +227,19 @@ int main(int argc, char *argv[]){
 /* USER FUN IMPL */
 
 void stopObserver(){
-    observer->reset();
+    ss_observer->reset();
     running = false;
 }
 void startObserver(){
-    observer->reset();
+    ss_observer->reset();
     setInitialConditions();
     running = true;
 }
 
 void setInitialConditions(){
     
-    observer->reset();
-    observer->setState( makeVector( 0.0, y_kf[0]/ss_info.sigma_02 ) ) ;
-    //observer->setPrecInput( input_vector ); <-- expose system_ in Observer_SS_Incapsuler/Kalman_Filter to implement this
+    ss_observer->reset();
+    ss_observer->setState( makeVector( 0.0, y_kf[0]/ss_info.sigma_02 ) ) ;
 
 }
 

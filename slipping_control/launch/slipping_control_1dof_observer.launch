@@ -1,6 +1,9 @@
 <launch>
 
+	<arg name="ns_filter" default=""/>
+
 	<!-- Subs -->
+	
 	<arg name="contact_force_0_topic" default="finger0/contact_force"/>
 	<arg name="contact_force_1_topic" default="finger1/contact_force"/>
 	<arg name="grasp_force_topic" default="grasp_force"/>
@@ -83,6 +86,29 @@
 <!--///-->
 <!--FIX SIGN-->
 
+	<node name="filter_wrench_for_cf0"  pkg="sun_ros_utils_nodes" type="filter_wrench_stamped" output="screen">
+
+		<param name="in_topic" type="string" value="$(arg ns_filter)wsg50/finger0/wrench"/>
+
+		<param name="out_topic" type="string" value="$(arg ns_filter)wsg50/finger0/wrench_filter_cf"/>
+
+		<param name="cut_freq" value="1.0"/>
+		<param name="rate" value="500.0"/>
+
+  	</node>
+	<node name="filter_wrench_for_cf1"  pkg="sun_ros_utils_nodes" type="filter_wrench_stamped" output="screen">
+
+		<param name="in_topic" type="string" value="$(arg ns_filter)wsg50/finger1/wrench"/>
+
+		<param name="out_topic" type="string" value="$(arg ns_filter)wsg50/finger1/wrench_filter_cf"/>
+
+		<param name="cut_freq" value="1.0"/>
+		<param name="rate" value="300.0"/>
+
+  	</node>
+
+
+
 	<node name="contact_force_fix" pkg="slipping_control" type="contact_force_fix" output="screen">
 
         <!-- Sub -->
@@ -92,6 +118,10 @@
         <!-- Pubs -->
         <param name="output_topic0" value="$(arg contact_force_0_topic)/fix"/>
 		<param name="output_topic1" value="$(arg contact_force_1_topic)/fix"/>
+
+		<!-- sub -->
+        <param name="wrench_filtered0_tipic" value="$(arg ns_filter)wsg50/finger0/wrench_filter_cf"/>
+		<param name="wrench_filtered1_tipic" value="$(arg ns_filter)wsg50/finger1/wrench_filter_cf"/>
 
     </node>
 
@@ -173,10 +203,10 @@
 		<param name="Io" type="double" value="$(arg Io)"/>
 		<param name="Mo" type="double" value="$(arg Mo)"/>
 		<param name="b" type="double" value="$(arg b)"/>
-		<param name="beta_o" type="double" value="$(arg beta_o)"/>
+		<param name="betaA" type="double" value="$(arg betaA)"/>
 		<param name="sigma_0" type="double" value="$(arg sigma_0)"/>
 
-		<param name="l" type="double" value="1000.0"/>
+		<param name="l" type="double" value="$(arg l)"/>
 
 		<!-- Misc Vars -->
 		<param name="min_gen_max_force" type="double" value="$(arg obs_min_gen_max_force)"/>
@@ -199,7 +229,6 @@
 
 	<node name="dynamic_controller" pkg="slipping_control" type="dynamic_controller" output="screen">
 
-		<!--Params-->
 		<param name="hz" value="$(arg dyn_frequency)"/>
 		<param name="i_gain" value="$(arg dyn_i_gain)"/>
 		<param name="p_gain" value="$(arg dyn_p_gain)"/>
@@ -207,13 +236,10 @@
 
 		<param name="max_fnd" value="$(arg max_fnd)"/>
 
-		<!-- Sub -->
 		<param name="in_topic" value="$(arg obs_estimated_velocity_topic)"/>
 
-		<!-- Pub -->
 		<param name="out_topic" value="$(arg dynamic_force_topic)"/>
 
-		<!-- Srv Server -->
 		<param name="set_running_service" value="$(arg dyn_set_running_service)"/>
 
 	</node>

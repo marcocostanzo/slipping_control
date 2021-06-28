@@ -23,12 +23,23 @@
 
 #include "std_msgs/Int8.h"
 #include "slipping_control_msgs/ContactForcesStamped.h"
+#include "slipping_control_msgs/ContactForcesFixStamped.h"
 #include "Helper.h"
 
-#define SIGN_FIX_TAUN_TRIGGER 0.003
-#define SCHMITT_TRIGGER_MIN 0.0005
-#define SCHMITT_TRIGGER_MAX 0.002
-#define SCHMITT_TRIGGER_OUT_WHEN_ACTIVE 0.002
+// #define SIGN_FIX_TAUN_TRIGGER 0.003
+
+// // #define SCHMITT_TRIGGER_MIN 0.0005
+// // #define SCHMITT_TRIGGER_MAX 0.003
+// // #define SCHMITT_TRIGGER_OUT_WHEN_ACTIVE 0.003
+
+// #define SCHMITT_TRIGGER_MIN 0.0015
+// #define SCHMITT_TRIGGER_MAX 0.0015
+// #define SCHMITT_TRIGGER_OUT_WHEN_ACTIVE 0.0015
+
+#define SIGN_FIX_TAUN_TRIGGER 0.001
+#define SCHMITT_TRIGGER_MIN 0.001
+#define SCHMITT_TRIGGER_MAX 0.001
+#define SCHMITT_TRIGGER_OUT_WHEN_ACTIVE 0.001
 
 using namespace std;
 
@@ -54,28 +65,40 @@ ros::Publisher pubContact1;
 
 //State vars
 double segn_tau0 = -1.0;
-double segn_tau1 = -1.0;
+double segn_tau1 = 1.0;
 double segn_tau = -1.0;
 bool schmitt_t_tau0_state = true;
 bool schmitt_t_tau1_state = true;
 double tau0_abs = 0.0, tau1_abs = 0.0;
 
+double taun0_filtered = 0;
+double taun1_filtered = 0;
+
+#include "geometry_msgs/WrenchStamped.h"
+void wrench0FilteredCB( const geometry_msgs::WrenchStampedConstPtr& msg ){
+    taun0_filtered = msg->wrench.torque.z;
+}
+void wrench1FilteredCB( const geometry_msgs::WrenchStampedConstPtr& msg ){
+    taun1_filtered = msg->wrench.torque.z;
+}
+
 void wrench0CB( const slipping_control_msgs::ContactForcesStamped::Ptr& msg ){
 
     tau0_abs = fabs(msg->forces.taun);
 
-    /*double taun_triggered =*/ 
+    // Trigger sign tau
     trigger_fcn( msg->forces.taun, segn_tau0, SIGN_FIX_TAUN_TRIGGER );
-
+    // choose sign using abs
     if(tau0_abs >= tau1_abs)
         segn_tau = segn_tau0;
     else
         segn_tau = -segn_tau1;
     
-    //fix 2.0?
+    //fix 2.0? - IDK
     if(segn_tau0 == segn_tau1 && (tau0_abs - tau1_abs) < 0.002 )
         segn_tau = segn_tau0;
 
+    // Trigger on tau value
     double tau0_abs_triggered = SchmittTrigger( 
                                                 tau0_abs, 
                                                 schmitt_t_tau0_state, 
@@ -84,9 +107,24 @@ void wrench0CB( const slipping_control_msgs::ContactForcesStamped::Ptr& msg ){
                                                 SCHMITT_TRIGGER_OUT_WHEN_ACTIVE
                                                 );
 
-    msg->forces.taun = segn_tau*tau0_abs_triggered;
+    slipping_control_msgs::ContactForcesFixStamped out_msg;
+    out_msg.header = msg->header;
+    out_msg.forces.fn = msg->forces.fn;
+    out_msg.forces.ft = msg->forces.ft;
+    // // out_msg.forces.taun = segn_tau*tau0_abs;
+    // out_msg.forces.taun = msg->forces.taun;
+    // out_msg.forces.taun_fixed = segn_tau*tau0_abs_triggered;
+    // out_msg.forces.taun_filtered = taun0_filtered;
 
-    pubContact0.publish( msg );
+    out_msg.forces.taun = -fabs(msg->forces.taun);
+    out_msg.forces.taun_fixed = -fabs(tau0_abs_triggered);
+    out_msg.forces.taun_filtered = -fabs(taun0_filtered);
+
+    // out_msg.forces.taun = msg->forces.taun;
+    // out_msg.forces.taun_fixed = tau0_abs_triggered;
+    // out_msg.forces.taun_filtered = taun0_filtered;
+
+    pubContact0.publish( out_msg );
 
 }
 
@@ -94,9 +132,10 @@ void wrench1CB( const slipping_control_msgs::ContactForcesStamped::Ptr& msg ){
 
     tau1_abs = fabs(msg->forces.taun);
 
-    /*double taun_triggered =*/ 
+    // Trigger sign tau
     trigger_fcn( msg->forces.taun, segn_tau1, SIGN_FIX_TAUN_TRIGGER );
 
+    // Trigger on tau value
     double tau1_abs_triggered = SchmittTrigger( 
                                                 tau1_abs, 
                                                 schmitt_t_tau1_state, 
@@ -105,9 +144,20 @@ void wrench1CB( const slipping_control_msgs::ContactForcesStamped::Ptr& msg ){
                                                 SCHMITT_TRIGGER_OUT_WHEN_ACTIVE
                                                 );
 
-    msg->forces.taun = -segn_tau*tau1_abs_triggered;
+    slipping_control_msgs::ContactForcesFixStamped out_msg;
+    out_msg.header = msg->header;
+    out_msg.forces.fn = msg->forces.fn;
+    out_msg.forces.ft = msg->forces.ft;
+    // // out_msg.forces.taun = -segn_tau*tau1_abs;
+    // out_msg.forces.taun = msg->forces.taun;
+    // out_msg.forces.taun_fixed = -segn_tau*tau1_abs_triggered;
+    // out_msg.forces.taun_filtered = taun1_filtered;
 
-    pubContact1.publish( msg );
+    out_msg.forces.taun = fabs(msg->forces.taun);
+    out_msg.forces.taun_fixed = fabs(tau1_abs_triggered);
+    out_msg.forces.taun_filtered = fabs(taun1_filtered);
+
+    pubContact1.publish( out_msg );
 
 }
 
@@ -129,11 +179,19 @@ int main(int argc, char *argv[])
     string output_topic1_str;
     nh_private.param("output_topic1" , output_topic1_str, string("contact1/fix") );
 
+    string wrench_filtered_topic0_str;
+    nh_private.param("wrench_filtered0_tipic" , wrench_filtered_topic0_str, string("wrench0_filter") );
+    string wrench_filtered_topic1_str;
+    nh_private.param("wrench_filtered1_tipic" , wrench_filtered_topic1_str, string("wrench1_filter") );
+
     ros::Subscriber subContact0 = nh_public.subscribe( input_topic0_str, 1, wrench0CB);
     ros::Subscriber subContact1 = nh_public.subscribe( input_topic1_str, 1, wrench1CB);
 
-    pubContact0 = nh_public.advertise<slipping_control_msgs::ContactForcesStamped>(output_topic0_str, 1);
-    pubContact1 = nh_public.advertise<slipping_control_msgs::ContactForcesStamped>(output_topic1_str, 1);
+    ros::Subscriber subWrenchFiltered0 = nh_public.subscribe( wrench_filtered_topic0_str, 1, wrench0FilteredCB);
+    ros::Subscriber subWrenchFiltered1 = nh_public.subscribe( wrench_filtered_topic1_str, 1, wrench1FilteredCB);
+
+    pubContact0 = nh_public.advertise<slipping_control_msgs::ContactForcesFixStamped>(output_topic0_str, 1);
+    pubContact1 = nh_public.advertise<slipping_control_msgs::ContactForcesFixStamped>(output_topic1_str, 1);
     
     ros::spin();
 

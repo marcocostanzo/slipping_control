@@ -1,17 +1,19 @@
 <launch>
 
-	<arg name="ns_filter" default=""/>
+	<arg name="fingers_wrench" default=""/>
+	<arg name="finger_0_wrench" default=""/>
+	<arg name="finger_1_wrench" default=""/>
 
-	<!-- Subs -->
-	
 	<arg name="contact_force_0_topic" default="finger0/contact_force"/>
 	<arg name="contact_force_1_topic" default="finger1/contact_force"/>
+
+	<!-- Subs -->
+	<arg name="contact_force_topic" default="contact_force"/>
 	<arg name="grasp_force_topic" default="grasp_force"/>
 
 	<!-- Pubs -->
 	<arg name="desired_grasp_force_topic" default="desired_grasp_force"/>
-	<arg name="ls_0_topic" default="ls_0"/>
-	<arg name="ls_1_topic" default="ls_1"/>
+	<arg name="ls_topic" default="ls"/>
 	<arg name="ls_combined_topic" default="ls_combined"/>
 	<arg name="obs_estimated_velocity_topic" default="estimated_velocity"/>
 	<arg name="obs_estimated_state_topic" default="estimated_state"/>
@@ -23,8 +25,7 @@
 	<arg name="force_control_set_running_service" default="force_control/set_running"/>
 
 	<!-- Srv Server -->
-	<arg name="ls_0_change_params_service" default="ls_0/change_params"/>
-	<arg name="ls_1_change_params_service" default="ls_1/change_params"/>
+	<arg name="ls_change_params_service" default="ls/change_params"/>
 	<arg name="obs_set_running_service" default="obs/set_running"/>
 	<arg name="dyn_set_running_service" default="dyn_controller/set_running"/>	
 
@@ -43,16 +44,6 @@
 	<arg name="gamma" default="0.2569"/>
 	<arg name="mu" default="0.8"/>
 	<arg name="k" default="4.0"/>
-
-	<arg name="delta_0" default="$(arg delta)"/>
-	<arg name="gamma_0" default="$(arg gamma)"/>
-	<arg name="mu_0" default="$(arg mu)"/>
-	<arg name="k_0" default="$(arg k)"/>
-
-	<arg name="delta_1" default="$(arg delta)"/>
-	<arg name="gamma_1" default="$(arg gamma)"/>
-	<arg name="mu_1" default="$(arg mu)"/>
-	<arg name="k_1" default="$(arg k)"/>
 
 	<arg name="max_cor_tilde" default="100.0"/>
 
@@ -86,107 +77,88 @@
 <!--///-->
 <!--FIX SIGN-->
 
-	<node name="filter_wrench_for_cf0"  pkg="sun_ros_utils_nodes" type="filter_wrench_stamped" output="screen">
+	<node name="filter_wrench_for_cf"  pkg="sun_ros_utils_nodes" type="filter_wrench_stamped" output="screen">
 
-		<param name="in_topic" type="string" value="$(arg ns_filter)wsg50/finger0/wrench"/>
+		<param name="in_topic" type="string" value="$(arg fingers_wrench)"/>
 
-		<param name="out_topic" type="string" value="$(arg ns_filter)wsg50/finger0/wrench_filter_cf"/>
+		<param name="out_topic" type="string" value="$(arg fingers_wrench)_filter_cf"/>
 
 		<param name="cut_freq" value="1.0"/>
 		<param name="rate" value="500.0"/>
 
   	</node>
-	<node name="filter_wrench_for_cf1"  pkg="sun_ros_utils_nodes" type="filter_wrench_stamped" output="screen">
 
-		<param name="in_topic" type="string" value="$(arg ns_filter)wsg50/finger1/wrench"/>
+	<node name="wrench_stamped_2_contact_force_stamped" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
+		<param name="input_topic" type="string" value="$(arg fingers_wrench)"/>
+		<param name="output_topic" type="string" value="$(arg contact_force_topic)"/>
+	</node>
 
-		<param name="out_topic" type="string" value="$(arg ns_filter)wsg50/finger1/wrench_filter_cf"/>
+	<node name="wrench_stamped_2_contact_force_stamped_0" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
+		<param name="input_topic" type="string" value="$(arg finger_0_wrench)"/>
+		<param name="output_topic" type="string" value="$(arg contact_force_0_topic)"/>
+	</node>
 
-		<param name="cut_freq" value="1.0"/>
-		<param name="rate" value="300.0"/>
+	<node name="wrench_stamped_2_contact_force_stamped_1" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
+		<param name="input_topic" type="string" value="$(arg finger_1_wrench)"/>
+		<param name="output_topic" type="string" value="$(arg contact_force_1_topic)"/>
+	</node>
 
-  	</node>
-
-
-
+	<!-- TODO: Fix this for 1 finger -->
 	<node name="contact_force_fix" pkg="slipping_control" type="contact_force_fix" output="screen">
 
         <!-- Sub -->
-        <param name="input_topic0" value="$(arg contact_force_0_topic)"/>
-        <param name="input_topic1" value="$(arg contact_force_1_topic)"/>
+        <param name="input_topic0" value="$(arg contact_force_topic)"/>
+        <param name="input_topic1" value="/null"/>
 
         <!-- Pubs -->
-        <param name="output_topic0" value="$(arg contact_force_0_topic)/fix"/>
-		<param name="output_topic1" value="$(arg contact_force_1_topic)/fix"/>
+        <param name="output_topic0" value="$(arg contact_force_topic)/fix"/>
+		<param name="output_topic1" value="/null/fix"/>
 
 		<!-- sub -->
-        <param name="wrench_filtered0_tipic" value="$(arg ns_filter)wsg50/finger0/wrench_filter_cf"/>
-		<param name="wrench_filtered1_tipic" value="$(arg ns_filter)wsg50/finger1/wrench_filter_cf"/>
+        <param name="wrench_filtered0_tipic" value="$(arg fingers_wrench)_filter_cf"/>
+		<param name="wrench_filtered1_tipic" value="/null1"/>
 
-    </node>
+</node>
 
 <!--///-->
-<!--LS0-->
+<!--LS-->
 
-	<node name="compute_ls_0" pkg="slipping_control" type="compute_ls" output="screen">
+	<node name="compute_ls" pkg="slipping_control" type="compute_ls" output="screen">
 
 		<!-- PARAMS -->
-        <param name="delta" value="$(arg delta_0)"/>
-        <param name="gamma" value="$(arg gamma_0)"/>
-        <param name="mu" value="$(arg mu_0)"/>
-		<param name="k" value="$(arg k_0)"/>
+        <param name="delta" value="$(arg delta)"/>
+        <param name="gamma" value="$(arg gamma)"/>
+        <param name="mu" value="$(arg mu)"/>
+		<param name="k" value="$(arg k)"/>
 
 		<!-- Misc Vars -->
 		<param name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
 
 		<!-- Sub -->
-		<param name="contact_force_topic" value="$(arg contact_force_0_topic)/fix"/>
+		<param name="contact_force_topic" value="$(arg contact_force_topic)/fix"/>
 
 		 <!-- Pub -->
-		 <param name="ls_topic" value="$(arg ls_0_topic)"/>
+		 <param name="ls_topic" value="$(arg ls_topic)"/>
 
 		 <!-- Srv Server -->
-		 <param name="service_ch_params" value="$(arg ls_0_change_params_service)"/>
+		 <param name="service_ch_params" value="$(arg ls_change_params_service)"/>
 
 	</node>
 
 <!--///-->
-<!--LS1-->
-
-	<node name="compute_ls_1" pkg="slipping_control" type="compute_ls" output="screen">
-
-		<!-- PARAMS -->
-        <param name="delta" value="$(arg delta_1)"/>
-        <param name="gamma" value="$(arg gamma_1)"/>
-        <param name="mu" value="$(arg mu_1)"/>
-		<param name="k" value="$(arg k_1)"/>
-
-		<!-- Misc Vars -->
-		<param name="max_cor_tilde" value="$(arg max_cor_tilde)"/>
-
-		<!-- Sub -->
-		<param name="contact_force_topic" value="$(arg contact_force_1_topic)/fix"/>
-
-		 <!-- Pub -->
-		 <param name="ls_topic" value="$(arg ls_1_topic)"/>
-
-		 <!-- Srv Server -->
-		 <param name="service_ch_params" value="$(arg ls_1_change_params_service)"/>
-
-	</node>
 
 <!--///-->
 <!--Combine Ls-->
 
-	<node name="static_combine" pkg="slipping_control" type="static_combine" output="screen">
+	<!-- TODO: Fix this for 1 finger -->
+	<node name="static_combine" pkg="slipping_control" type="static_combine_1ls" output="screen">
 
 		<!-- PARAMS -->
         <param name="fn_ls_gain" value="$(arg fn_ls_gain)"/>
 		<param name="min_fn" value="$(arg min_fn)"/>
 
 		<!-- Subs -->
-        <param name="in_topic0" value="$(arg ls_0_topic)"/>
-        <param name="in_topic1" value="$(arg ls_1_topic)"/>
+        <param name="in_topic0" value="$(arg ls_topic)"/>
 
 		<!-- Pub -->
         <param name="out_topic" value="$(arg ls_combined_topic)"/>

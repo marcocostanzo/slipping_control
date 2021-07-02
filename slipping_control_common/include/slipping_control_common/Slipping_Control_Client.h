@@ -62,19 +62,25 @@ private:
 
 protected:
 
-actionlib::SimpleActionClient<slipping_control_msgs::HomeGripperAction> ac_home_;
-actionlib::SimpleActionClient<slipping_control_msgs::GraspAction> ac_grasp_;
-actionlib::SimpleActionClient<slipping_control_msgs::SlippingControlAction> ac_sc_;
+ros::NodeHandle nh_;
 
 ros::ServiceClient service_client_get_state_;
 ros::ServiceClient service_client_ch_params0_;
 ros::ServiceClient service_client_ch_params1_;
 
+bool one_ls_;
+
 public:
+
+actionlib::SimpleActionClient<slipping_control_msgs::HomeGripperAction> ac_home_;
+actionlib::SimpleActionClient<slipping_control_msgs::GraspAction> ac_grasp_;
+actionlib::SimpleActionClient<slipping_control_msgs::SlippingControlAction> ac_sc_;
 
 bool active;
 
-Slipping_Control_Client( ros::NodeHandle& nh, bool active = false, const std::string& ns_prefix = "/" );
+Slipping_Control_Client( const ros::NodeHandle& nh, bool active = false, bool one_ls = false, bool wait_for_servers = true );
+
+void waitForServers();
 
 void home( bool wait_result = true );
 

@@ -23,17 +23,32 @@
 
 using namespace std;
 
-Slipping_Control_Client::Slipping_Control_Client( ros::NodeHandle& nh, bool gripper_active, const std::string& ns_prefix )
+Slipping_Control_Client::Slipping_Control_Client( const ros::NodeHandle& nh, bool gripper_active, bool one_ls, bool wait_for_servers)
 :
+one_ls_(one_ls),
 active(gripper_active),
-ac_home_(ns_prefix + "slipping_control/home_gripper_action", true),
-ac_grasp_(ns_prefix + "slipping_control/grasp_action", true),
-ac_sc_(ns_prefix + "slipping_control/slipping_control_action", true)
+nh_(nh),
+ac_home_(nh_, "slipping_control/home_gripper_action", true),
+ac_grasp_(nh_, "slipping_control/grasp_action", true),
+ac_sc_(nh_, "slipping_control/slipping_control_action", true)
 {
-    service_client_get_state_ = nh.serviceClient<slipping_control_msgs::GetState>(ns_prefix + "slipping_control/get_state");
-    service_client_ch_params0_ = nh.serviceClient<slipping_control_msgs::ChLSParams>(ns_prefix + "slipping_control/finger0/ls/change_params");
-    service_client_ch_params1_ = nh.serviceClient<slipping_control_msgs::ChLSParams>(ns_prefix + "slipping_control/finger1/ls/change_params");
+    service_client_get_state_ = nh_.serviceClient<slipping_control_msgs::GetState>("slipping_control/get_state");
+    if(!one_ls_)
+    {
+    service_client_ch_params0_ = nh_.serviceClient<slipping_control_msgs::ChLSParams>("slipping_control/finger0/ls/change_params");
+    service_client_ch_params1_ = nh_.serviceClient<slipping_control_msgs::ChLSParams>("slipping_control/finger1/ls/change_params");
+    }
+    else
+    {
+    service_client_ch_params0_ = nh_.serviceClient<slipping_control_msgs::ChLSParams>("slipping_control/ls/change_params");
+    }
 
+    if(wait_for_servers)
+        waitForServers();
+}
+
+void Slipping_Control_Client::waitForServers()
+{
     if(active)
     {
         ac_home_.waitForServer();
@@ -41,7 +56,8 @@ ac_sc_(ns_prefix + "slipping_control/slipping_control_action", true)
         ac_sc_.waitForServer();
         service_client_get_state_.waitForExistence();
         service_client_ch_params0_.waitForExistence();
-        service_client_ch_params1_.waitForExistence();
+        if(!one_ls_)
+            service_client_ch_params1_.waitForExistence();
     }
 }
 
@@ -198,11 +214,13 @@ void Slipping_Control_Client::change_params(double mu0, double mu1)
         throw "Error in set mu0";
     } 
 
-    srv.request.mu = mu1;
-    if(!service_client_ch_params1_.call(srv))
-    {
-        cout << BOLDRED "Error during set mu1" CRESET << endl;
-        throw "Error in set mu1";
-    } 
+    if(!one_ls_){
+        srv.request.mu = mu1;
+        if(!service_client_ch_params1_.call(srv))
+        {
+            cout << BOLDRED "Error during set mu1" CRESET << endl;
+            throw "Error in set mu1";
+        }
+    }
 
 }

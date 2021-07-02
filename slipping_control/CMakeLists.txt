@@ -296,3 +296,12 @@ target_link_libraries(velocity_controller
   ${catkin_LIBRARIES}
 )
 #########################################
+#########################################
+add_executable(static_combine_1ls
+  src/static_combine_1ls_node.cpp
+)
+add_dependencies(static_combine_1ls ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(static_combine_1ls
+  ${catkin_LIBRARIES}
+)
+#########################################

@@ -319,6 +319,29 @@ void executeHomeGripperCB( const slipping_control_msgs::HomeGripperGoalConstPtr 
     //Stop observer
     b_error = b_error & !observer_set_running(false);
 
+    if(goal->do_not_move_the_gripper)
+    {
+        cout << HEADER_PRINT_STATE << "[Action HomeGripper] DO NOT MOVE THE GRIPPER!" << endl;
+
+        slipping_control_msgs::HomeGripperResult result;
+        result.success = true;
+        if(b_error){
+            //Homing ok but some error occurs
+            result.msg = "ERROR";
+            state_ = STATE_HOME;
+        } else {
+            //No error
+            result.msg = "OK";
+            state_ = STATE_HOME;
+        }
+
+        cout << HEADER_PRINT_STATE << "[Action HomeGripper] " GREEN "Succeeded" CRESET << endl;
+        
+        home_gripper_as_.setSucceeded(result);
+        return;
+        
+    }
+
     //send homing command
     cout << HEADER_PRINT_STATE << "[Action HomeGripper] Sending homing command..." << endl;
     if(send_homing_command()){
@@ -1205,8 +1228,8 @@ bool goToZeroDeg()
 
     ros::Rate loop_rate(hz_);
 
-    cout << HEADER_PRINT_STATE " goToZeroDeg() - Decreasing grasp force... " << endl;
-    while( fr > (fn_ls_free_pivot_) )
+    cout << HEADER_PRINT_STATE " goToZeroDeg() - Decreasing grasp force... fr " << fr << " fn_ls_free_pivot_" << endl;
+    while( fabs(fr - fn_ls_free_pivot_) > 0.1 )
     {
         if (!ros::ok()) {
             cout << HEADER_PRINT_STATE BOLDRED " Ros not ok() in goToZeroDeg()" CRESET << endl;

@@ -1,4 +1,4 @@
-
+bool do_not_move_the_gripper
 ---
 bool success
 string msg

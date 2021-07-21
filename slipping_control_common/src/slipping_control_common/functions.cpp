@@ -168,6 +168,10 @@ double computeCOR_outsideLS_tilde(double ft_friction_tilde, double taun_friction
   int MAX_GD_ITER = 10000;
 
   double initial_point = -sign(ft_friction_tilde) * sign(taun_friction_tilde);
+  if (std::isnan(initial_point) || std::isinf(initial_point))
+  {
+    throw std::runtime_error("initial_point isnan");
+  }
 
   const boost::function<double(double)> ft_ls_star_tilde_boost =
       boost::bind(ft_ls_star_tilde, _1, boost::ref(__SIGMA_INFO__));
@@ -197,7 +201,8 @@ double computeCOR_outsideLS_tilde(double ft_friction_tilde, double taun_friction
 
   if (std::isnan(c_tilde) || std::isinf(c_tilde))
   {
-    throw std::runtime_error("findZero not converged in computeCOR_outsideLS_tilde");
+    throw std::runtime_error("findZero not converged in computeCOR_outsideLS_tilde\ninitial_point: " + std::to_string(initial_point) + 
+     + "\nxik_nuk" + std::to_string(xik_nuk) + "\nft_friction_tilde" + std::to_string(ft_friction_tilde) + "\ntaun_friction_tilde" + std::to_string(taun_friction_tilde) );
   }
 
   // check domain
@@ -221,6 +226,10 @@ double computeCOR_insideLS_tilde(double ft_friction_tilde, double taun_friction_
   double sigma = calculateSigma(ft_friction_tilde, taun_friction_tilde, gamma);
 
   double initial_point = -sign(ft_friction_tilde) * sign(taun_friction_tilde);
+  if (std::isnan(initial_point) || std::isinf(initial_point))
+  {
+    throw std::runtime_error("initial_point isnan");
+  }
 
   const boost::function<double(double)> ft_ls_star_tilde_boost =
       boost::bind(ft_ls_star_tilde, _1, boost::ref(__SIGMA_INFO__));
@@ -249,7 +258,8 @@ double computeCOR_insideLS_tilde(double ft_friction_tilde, double taun_friction_
 
   if (std::isnan(c_tilde) || std::isinf(c_tilde))
   {
-    throw std::runtime_error("findZero not converged in computeCOR_insideLS_tilde");
+    throw std::runtime_error("findZero not converged in computeCOR_insideLS_tilde\ninitial_point: " + std::to_string(initial_point) + 
+     + "\nsigma" + std::to_string(sigma) + "\ngamma" + std::to_string(gamma) + "\nft_friction_tilde" + std::to_string(ft_friction_tilde) + "\ntaun_friction_tilde" + std::to_string(taun_friction_tilde) );
   }
 
   // check domain

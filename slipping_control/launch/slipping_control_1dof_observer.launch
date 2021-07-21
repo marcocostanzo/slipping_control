@@ -91,16 +91,20 @@
 	<node name="wrench_stamped_2_contact_force_stamped" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 		<param name="input_topic" type="string" value="$(arg fingers_wrench)"/>
 		<param name="output_topic" type="string" value="$(arg contact_force_topic)"/>
+		<param name="get_fn_from_external_topic" value="true"/>
+		<param name="fn_external_topic" value="$(arg grasp_force_topic)"/>
 	</node>
 
 	<node name="wrench_stamped_2_contact_force_stamped_0" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 		<param name="input_topic" type="string" value="$(arg finger_0_wrench)"/>
 		<param name="output_topic" type="string" value="$(arg contact_force_0_topic)"/>
+		<param name="get_fn_from_external_topic" value="false"/>
 	</node>
 
 	<node name="wrench_stamped_2_contact_force_stamped_1" pkg="slipping_control" type="wrench_stamped_2_contact_force_stamped" output="screen">
 		<param name="input_topic" type="string" value="$(arg finger_1_wrench)"/>
 		<param name="output_topic" type="string" value="$(arg contact_force_1_topic)"/>
+		<param name="get_fn_from_external_topic" value="false"/>
 	</node>
 
 	<!-- TODO: Fix this for 1 finger -->

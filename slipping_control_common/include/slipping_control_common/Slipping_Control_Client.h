@@ -58,11 +58,12 @@
 
 class Slipping_Control_Client {
 
+public: 
+ros::NodeHandle nh_;
+
 private:
 
 protected:
-
-ros::NodeHandle nh_;
 
 ros::ServiceClient service_client_get_state_;
 ros::ServiceClient service_client_ch_params0_;
@@ -82,7 +83,7 @@ Slipping_Control_Client( const ros::NodeHandle& nh, bool active = false, bool on
 
 void waitForServers();
 
-void home( bool wait_result = true );
+void home( bool wait_result = true, bool do_not_move_the_gripper = false);
 
 bool graspIsDone();
 void abortGrasp(bool wait_for_result = true);

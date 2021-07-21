@@ -61,11 +61,12 @@ void Slipping_Control_Client::waitForServers()
     }
 }
 
-void Slipping_Control_Client::home( bool wait_result )
+void Slipping_Control_Client::home( bool wait_result, bool do_not_move_the_gripper )
 {
     if(!active) return;
 
     slipping_control_msgs::HomeGripperGoal goal;
+    goal.do_not_move_the_gripper = do_not_move_the_gripper;
     ac_home_.sendGoal(goal);
     if(wait_result)
     {

@@ -121,6 +121,22 @@ void contact_force_Callback(const slipping_control_msgs::ContactForcesFixStamped
   }
   catch (const std::exception& e)
   {
+    // std::cout << "in catch"
+    // << "\nmsg->forces.fn: " << msg->forces.fn
+    // << "\nmsg->forces.ft: " << msg->forces.ft
+    // << "\nmax_ft: " << max_ft
+    // << "\nradius ls_info.delta * pow(fn, ls_info.gamma): " << ls_msg.radius
+    // << "\nls_info.delta: " << ls_info.delta
+    // << "\nls_info.gamma: " << ls_info.gamma
+    // << "\npow(fn, ls_info.gamma): " << pow(msg->forces.fn, ls_info.gamma)
+    // << "\nmsg->forces.ft/max_ft: " << msg->forces.ft/max_ft
+    // << "\ntaun_filtered: " << taun_filtered
+    // << "\nmax_taun: " << max_taun
+    // << "\ntaun_filtered/max_taun: " << taun_filtered/max_taun
+    // << "\nls_info.gamma: " << ls_info.gamma
+    // << "\nls_info.xik_nuk: " << ls_info.xik_nuk
+    // << "\nis_inside_ls: " << is_inside_ls
+    // << std::endl;
     ROS_ERROR_STREAM(HEADER_PRINT << " " << e.what());
     return;
   }

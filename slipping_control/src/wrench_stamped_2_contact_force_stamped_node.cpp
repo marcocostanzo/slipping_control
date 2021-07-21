@@ -23,17 +23,37 @@
 
 #include "geometry_msgs/WrenchStamped.h"
 #include "slipping_control_msgs/ContactForcesStamped.h"
+#include "sun_ros_msgs/Float64Stamped.h"
 
 using namespace std;
 
 ros::Publisher pubContact;
+
+bool get_fn_from_external_topic;
+double fn_from_external_topic = -100.0;
+void fnExternalCB( const sun_ros_msgs::Float64Stamped::ConstPtr& msg ){
+
+    fn_from_external_topic = msg->data;
+
+}
 
 slipping_control_msgs::ContactForcesStamped contact_force_msg;
 void wrenchCB( const geometry_msgs::WrenchStamped::ConstPtr& msg ){
 
     contact_force_msg.header = msg->header;
 
+    if(get_fn_from_external_topic)
+    {
+        if(fn_from_external_topic == -100.0)
+        {
+            return;
+        }
+        contact_force_msg.forces.fn = fabs(fn_from_external_topic);
+    }
+    else
+    {
     contact_force_msg.forces.fn = fabs(msg->wrench.force.z);
+    }
     contact_force_msg.forces.ft = sqrt( pow(msg->wrench.force.x, 2) + pow(msg->wrench.force.y, 2) );
     // contact_force_msg.forces.ft = 0.1*9.8;
     contact_force_msg.forces.taun = msg->wrench.torque.z;
@@ -55,7 +75,17 @@ int main(int argc, char *argv[])
     string output_topic_str;
     nh_private.param("output_topic" , output_topic_str, string("contact") );
 
+    nh_private.param("get_fn_from_external_topic" , get_fn_from_external_topic, true );
+    string fn_external_topic_str;
+    nh_private.param("fn_external_topic" , fn_external_topic_str, string("grasp_force") );
+
     ros::Subscriber subWrench = nh_public.subscribe( input_topic_str, 1, wrenchCB);
+
+    ros::Subscriber subFnExternal;
+    if(get_fn_from_external_topic)
+    {
+        subFnExternal = nh_public.subscribe( fn_external_topic_str, 1, fnExternalCB);
+    }
 
     pubContact = nh_public.advertise<slipping_control_msgs::ContactForcesStamped>(output_topic_str, 1);
     
